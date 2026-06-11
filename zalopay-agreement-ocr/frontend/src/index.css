@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-blue: #0030CC;
+  --brand-green: #00CC66;
+  --neutral-900: #1A1F36;
+  --neutral-500: #6B7280;
+  --bg: #F7F9FC;
+  --warning: #F5A623;
+  --danger: #E5484D;
+}
+
+body {
+  font-family: 'Be Vietnam Pro', sans-serif;
+  background-color: var(--bg);
+  color: var(--neutral-900);
+}
+
+.confidence-low { background-color: #FEF3C7; border-left: 3px solid var(--warning); }
+.ai-badge { font-size: 0.7rem; color: var(--brand-blue); }

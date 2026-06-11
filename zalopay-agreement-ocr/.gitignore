@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+dist/
+.agentbase-state.json
+.agentbase/
+.greennode.json
+*.db
+*.sqlite

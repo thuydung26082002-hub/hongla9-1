@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+node_modules/
+__pycache__/
+*.pyc
+*.db
+*.sqlite
+.git/
+.gitignore
+frontend/node_modules/
+frontend/dist/
