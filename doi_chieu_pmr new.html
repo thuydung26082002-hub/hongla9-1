@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZaloPay · Đối chiếu TPE × Refund × AVR × PMR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#F4F6FB;--s:#fff;--s2:#F8F9FC;--s3:#EEF1F6;
+  --bdr:#DDE3EE;--bdr2:#C7D1E8;
+  --blue:#0068FF;--blue-d:#0051CC;--blue-l:rgba(0,104,255,.1);--blue-xl:rgba(0,104,255,.04);
+  --teal:#00A88A;--teal-l:rgba(0,168,138,.1);
+  --green:#00875A;--green-l:rgba(0,135,90,.08);
+  --red:#D93025;--red-l:rgba(217,48,37,.08);
+  --amber:#E07B00;--amber-l:rgba(224,123,0,.08);
+  --purple:#6E3FD9;--purple-l:rgba(110,63,217,.08);
+  --text:#0D1B2A;--text2:#4A6080;--muted:#8FA8CC;
+  --mono:'JetBrains Mono','Courier New',monospace;
+  --r:10px;--r2:8px;--r3:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#F0F2F8}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:99px}
+
+header{background:#fff;border-bottom:2px solid var(--blue);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,104,255,.08)}
+.hd-left{display:flex;align-items:center;gap:14px}
+.logo-z{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#00C896,#00A876);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:19px;color:#fff;box-shadow:0 2px 10px rgba(0,168,138,.3)}
+.hd-title{font-size:15px;font-weight:800;color:var(--text)}
+.hd-sub{font-size:11px;color:var(--text2);margin-top:1px}
+.chip-diamond{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;background:var(--teal-l);border:1px solid rgba(0,168,138,.3);font-size:11px;font-weight:700;color:var(--teal)}
+
+main{max-width:1240px;margin:0 auto;padding:24px 16px}
+
+.card{background:var(--s);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.ch{padding:12px 18px;border-bottom:1px solid var(--bdr);background:var(--s2);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ch h2{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;box-shadow:0 0 6px currentColor}
+.cb{padding:16px 18px}
+
+/* FOLDER PICKER */
+.folder-zone{border:2px dashed var(--bdr2);border-radius:var(--r2);padding:24px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--s2)}
+.folder-zone:hover{border-color:var(--blue);background:var(--blue-xl)}
+.folder-zone.loaded{border-style:solid;border-color:var(--teal);background:var(--teal-l)}
+.folder-zone .fz-icon{font-size:32px;margin-bottom:8px}
+.folder-zone h3{font-size:14px;font-weight:700;margin-bottom:4px}
+.folder-zone p{font-size:12px;color:var(--muted);line-height:1.5}
+.folder-zone .fz-status{font-size:12px;font-weight:600;color:var(--teal);margin-top:8px}
+.folder-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:linear-gradient(135deg,var(--blue),#0080FF);color:#fff;border:none;border-radius:var(--r2);cursor:pointer;font-size:13px;font-weight:700;box-shadow:0 3px 12px rgba(0,104,255,.3);transition:all .2s;margin-top:12px}
+.folder-btn:hover{box-shadow:0 4px 16px rgba(0,104,255,.45);transform:translateY(-1px)}
+.folder-btn.loaded{background:linear-gradient(135deg,var(--teal),#00C896)}
+
+/* FILE INDEX TABLE */
+.file-index{margin-top:14px}
+.fi-head{display:flex;gap:8px;padding:7px 12px;background:var(--s2);border-radius:var(--r3) var(--r3) 0 0;border:1px solid var(--bdr);border-bottom:none;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.fi-body{border:1px solid var(--bdr);border-radius:0 0 var(--r3) var(--r3);max-height:200px;overflow-y:auto}
+.fi-row{display:flex;gap:8px;padding:6px 12px;border-bottom:1px solid var(--bdr);font-size:12px;align-items:center}
+.fi-row:last-child{border-bottom:none}
+.fi-row:hover{background:var(--s2)}
+.fi-date{font-family:var(--mono);font-weight:700;color:var(--blue);width:100px;flex-shrink:0}
+.fi-files{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.fi-chip{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;border:1px solid}
+.fi-tpe{background:rgba(0,104,255,.08);color:var(--blue);border-color:rgba(0,104,255,.2)}
+.fi-ref{background:var(--green-l);color:var(--green);border-color:rgba(0,135,90,.2)}
+.fi-avr{background:var(--teal-l);color:var(--teal);border-color:rgba(0,168,138,.2)}
+.fi-miss{background:var(--red-l);color:var(--red);border-color:rgba(217,48,37,.2)}
+
+/* PMR SLOTS */
+.slot-list{display:flex;flex-direction:column;gap:8px}
+.slot-row{display:grid;grid-template-columns:30px 1fr 34px;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--bdr);border-radius:var(--r2);padding:8px 12px}
+.slot-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:var(--blue-l);border:1px solid rgba(0,104,255,.25);color:var(--blue)}
+.slot-remove{width:30px;height:30px;background:none;border:1px solid var(--bdr2);border-radius:var(--r3);cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all .2s}
+.slot-remove:hover{border-color:var(--red);color:var(--red);background:var(--red-l)}
+.dz{border:1.5px dashed var(--bdr2);border-radius:var(--r2);padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .2s}
+.dz:hover,.dz.drag{border-color:var(--blue);background:var(--blue-xl)}
+.dz.ok{border-style:solid;border-color:var(--teal);background:var(--teal-l)}
+.dz-ico{width:36px;height:36px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--s3);border:1px solid var(--bdr2);font-size:16px}
+.dz.ok .dz-ico{background:var(--teal-l);border-color:rgba(0,168,138,.4)}
+.dz-info h3{font-size:12px;font-weight:700;margin-bottom:2px}
+.dz-info p{font-size:10.5px;color:var(--muted);line-height:1.4}
+.dz-fname{font-size:10.5px;font-weight:600;color:var(--teal);margin-top:3px;word-break:break-all}
+input[type=file]{display:none}
+.add-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:10px;margin-top:8px;border:1.5px dashed rgba(0,104,255,.4);background:var(--blue-xl);color:var(--blue);border-radius:var(--r2);cursor:pointer;font-size:13px;font-weight:700;transition:all .2s}
+.add-btn:hover{border-color:var(--blue);background:var(--blue-l)}
+
+/* PMR DATE RANGE PREVIEW */
+.pmr-preview{margin-top:10px;display:none}
+.pp-row{display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--s2);border-radius:var(--r3);border:1px solid var(--bdr);font-size:12px;margin-bottom:4px}
+.pp-code{font-family:var(--mono);font-weight:700;color:var(--blue);min-width:120px}
+.pp-range{color:var(--text2)}
+.pp-files{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.pp-ok{color:var(--green)}
+.pp-miss{color:var(--red);font-weight:600}
+
+/* CONFIG */
+.cfg{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+.cfg-f label{font-size:11px;color:var(--text2);display:block;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.cfg-f input{padding:7px 10px;border:1px solid var(--bdr2);border-radius:var(--r2);font-size:13px;background:var(--s3);color:var(--text);outline:none}
+.cfg-f input:focus{border-color:var(--blue)}
+.cfg-note{flex:1;min-width:220px;font-size:11.5px;color:var(--text2);background:var(--blue-xl);border:1px solid rgba(0,104,255,.15);border-radius:var(--r2);padding:10px 13px;line-height:1.7}
+.cfg-note b{color:var(--blue)}
+
+/* RUN */
+.run-btn{width:100%;padding:13px;margin:16px 0;border:none;border-radius:var(--r);display:flex;align-items:center;justify-content:center;gap:9px;font-size:14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#0060EE,#0080FF);color:#fff;box-shadow:0 4px 18px rgba(0,104,255,.3);transition:all .2s}
+.run-btn:hover:not(:disabled){box-shadow:0 5px 22px rgba(0,104,255,.45);transform:translateY(-1px)}
+.run-btn:disabled{background:var(--s3);color:var(--muted);cursor:not-allowed;box-shadow:none;transform:none}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:600px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--s);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.st-blue::before{background:var(--blue)}.st-green::before{background:var(--green)}
+.st-red::before{background:var(--red)}.st-amber::before{background:var(--amber)}
+.stat .lbl{font-size:10.5px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.stat .val{font-size:24px;font-weight:900}
+.st-green .val{color:var(--green)}.st-red .val{color:var(--red)}.st-amber .val{color:var(--amber)}
+
+/* FILTER */
+.fbar{display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bdr);background:var(--s2);flex-wrap:wrap;align-items:center}
+.fbar select,.fbar input{padding:6px 9px;border:1px solid var(--bdr2);border-radius:var(--r3);font-size:12.5px;background:var(--s);color:var(--text);outline:none}
+.fbar input{min-width:180px}
+.fbar-r{margin-left:auto;display:flex;gap:6px}
+
+/* SUMMARY BAR */
+.sum-bar{display:none;padding:9px 14px;border-bottom:1px solid var(--bdr);background:#F5F8FF;flex-wrap:wrap;gap:8px;align-items:center}
+.sum-bar .lbl{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+.sum-chips{display:flex;flex-wrap:wrap;gap:6px}
+.s-chip{display:inline-flex;align-items:center;gap:6px;background:var(--s);border:1px solid var(--bdr);border-radius:6px;padding:4px 10px;font-size:12px}
+.s-chip .code{font-family:var(--mono);font-weight:700;color:var(--blue);font-size:11px}
+.s-chip .amt{font-weight:700;color:var(--text)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:var(--r3);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;border:1px solid var(--bdr2);background:var(--s3);color:var(--text2)}
+.btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-l)}
+.btn-danger{background:var(--red-l);color:var(--red);border-color:rgba(217,48,37,.25)}
+.btn-danger:hover{background:rgba(217,48,37,.15)}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{padding:9px 12px;text-align:left;font-size:10.5px;font-weight:700;color:#6B7A99;background:var(--s2);border-bottom:1px solid var(--bdr);white-space:nowrap;text-transform:uppercase;letter-spacing:.5px}
+th.r{text-align:right}
+td{padding:8px 12px;border-bottom:1px solid var(--bdr);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(0,104,255,.02)}
+tfoot tr td{background:var(--s2);font-weight:700;border-top:2px solid var(--bdr)}
+.num{text-align:right;font-family:var(--mono);font-size:12px}
+.app-id{font-family:var(--mono);font-weight:800;color:var(--blue);font-size:12px}
+.tag{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;padding:3px 8px;border-radius:99px;font-weight:700;white-space:nowrap}
+.tag-ok{background:var(--green-l);color:var(--green)}
+.tag-err{background:var(--red-l);color:var(--red)}
+.tag-warn{background:var(--amber-l);color:var(--amber)}
+.chip{display:inline-block;font-size:10px;padding:2px 6px;border-radius:4px;background:var(--blue-l);color:var(--blue);font-weight:700;font-family:var(--mono);border:1px solid rgba(0,104,255,.2);margin:1px 2px 1px 0}
+.chip-p2{background:var(--amber-l);color:var(--amber);border-color:rgba(224,123,0,.2)}
+.diff-hi{color:var(--red);font-weight:800}
+.diff-lo{color:var(--blue);font-weight:800}
+.empty{text-align:center;padding:44px;color:var(--muted);font-size:13px}
+.badge{font-size:11px;padding:3px 10px;border-radius:99px;font-weight:700}
+.b-blue{background:var(--blue-l);color:var(--blue);border:1px solid rgba(0,104,255,.2)}
+.b-ok{background:var(--green-l);color:var(--green)}
+.b-err{background:var(--red-l);color:var(--red)}
+.b-teal{background:var(--teal-l);color:var(--teal)}
+.info-box{font-size:11.5px;color:var(--text2);background:var(--blue-xl);border:1px solid rgba(0,104,255,.12);border-radius:var(--r2);padding:10px 14px;line-height:1.7;margin-top:10px}
+.info-box b{color:var(--blue)}
+.warn-box{font-size:11.5px;color:var(--amber);background:var(--amber-l);border:1px solid rgba(224,123,0,.2);border-radius:var(--r2);padding:10px 14px;line-height:1.7;margin-top:8px;display:none}
+
+/* FOLDER STRUCTURE GUIDE */
+.guide{background:var(--s2);border:1px solid var(--bdr);border-radius:var(--r2);padding:14px 16px;font-size:12px;line-height:1.8;font-family:var(--mono);color:var(--text2)}
+.guide .hl{color:var(--blue);font-weight:700}
+.guide .ok{color:var(--green);font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd-left">
+    <div class="logo-z">Z</div>
+    <div>
+      <div class="hd-title">ZaloPay Reconciliation</div>
+      <div class="hd-sub">TPE × Refund × AVR × PMR · Multi-date</div>
+    </div>
+  </div>
+  <div class="chip-diamond">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    Hạng Kim Cương
+  </div>
+</header>
+
+<main>
+
+<!-- STEP 1: FOLDER -->
+<div class="card">
+  <div class="ch">
+    <h2><span class="dot" style="color:var(--blue)"></span>Bước 1 — Chọn folder data</h2>
+    <span class="badge b-blue" id="folder-badge">Chưa chọn</span>
+  </div>
+  <div class="cb">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div class="folder-zone" id="folder-zone">
+          <div class="fz-icon">📁</div>
+          <h3>Folder chứa data theo ngày</h3>
+          <p>Cấu trúc: <code>data/YYYY-MM-DD/TPE_YYYYMMDD.xlsx</code></p>
+          <div class="fz-status" id="folder-status">Nhấn để chọn folder</div>
+          <button class="folder-btn" id="folder-btn" onclick="pickFolder()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Chọn folder data
+          </button>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Cấu trúc folder chuẩn</p>
+        <div class="guide">
+<span class="hl">📁 data/</span>
+├── <span class="hl">📁 2026-06-10/</span>
+│   ├── <span class="ok">TPE_20260610.xlsx</span>
+│   ├── <span class="ok">Refund_20260610.xlsx</span>
+│   └── <span class="ok">AVR_20260610.xlsx</span>
+├── <span class="hl">📁 2026-06-11/</span>
+│   ├── <span class="ok">TPE_20260611.xlsx</span>
+│   ├── <span class="ok">Refund_20260611.xlsx</span>
+│   └── <span class="ok">AVR_20260611.xlsx</span>
+└── <span class="hl">📁 2026-06-12/</span>
+    └── ...
+        </div>
+      </div>
+    </div>
+    <!-- File index -->
+    <div class="file-index" id="file-index" style="display:none">
+      <div class="fi-head">
+        <span style="width:100px">Ngày</span>
+        <span>Files tìm thấy</span>
+      </div>
+      <div class="fi-body" id="fi-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 2: PMR -->
+<div class="card">
+  <div class="ch">
+    <h2><span class="dot" style="color:var(--blue)"></span>Bước 2 — Upload file PMR</h2>
+    <span class="badge b-blue" id="pmr-badge">0 file</span>
+  </div>
+  <div class="cb">
+    <div class="slot-list" id="sl-pmr"></div>
+    <button class="add-btn" onclick="addPmr()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Thêm file PMR
+    </button>
+    <!-- PMR date range preview -->
+    <div class="pmr-preview" id="pmr-preview">
+      <p style="font-size:11.5px;font-weight:700;color:var(--text2);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Khoảng ngày trong PMR → files sẽ được tải:</p>
+      <div id="pp-rows"></div>
+    </div>
+    <div class="warn-box" id="warn-box"></div>
+    <div class="info-box">
+      <b>Col J (index 9):</b> AppID_ZipPaymentID · <b>Col T (index 19):</b> Mã PMR<br>
+      <b>Col E (index 4):</b> Từ ngày (DD-MM-YYYY) · <b>Col F (index 5):</b> Đến ngày<br>
+      <b>Tool sẽ tự động</b> tải TPE/Refund/AVR của tất cả ngày trong khoảng Col E → Col F
+    </div>
+  </div>
+</div>
+
+<!-- STEP 3: CONFIG + RUN -->
+<div class="card">
+  <div class="ch"><h2><span class="dot" style="color:var(--blue)"></span>Bước 3 — Cấu hình</h2></div>
+  <div class="cb">
+    <div class="cfg">
+      <div class="cfg-f"><label>Ngưỡng lệch (VND)</label><input id="c-tol" type="number" value="0" style="width:120px"></div>
+      <div class="cfg-note">
+        <b>Ưu tiên 1:</b> Match MerchantID_ZlpPaymentID ↔ AppID_ZipPaymentID<br>
+        <b>Ưu tiên 2:</b> Khi ZlpPaymentID trống hoặc hỗn hợp → match theo MerchantID, cộng dồn tất cả<br>
+        <b>Input Net</b> = TPE − Refund − AVR (gộp tất cả ngày trong kỳ)
+      </div>
+    </div>
+  </div>
+</div>
+
+<button class="run-btn" id="run-btn" disabled onclick="run()">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+  Chạy đối chiếu
+</button>
+
+<!-- RESULTS -->
+<div id="results" style="display:none">
+  <div class="stats">
+    <div class="stat st-blue"><div class="lbl">Tổng AppID</div><div class="val" id="s0">0</div></div>
+    <div class="stat st-green"><div class="lbl">Khớp</div><div class="val" id="s1">0</div></div>
+    <div class="stat st-red"><div class="lbl">Chênh lệch</div><div class="val" id="s2">0</div></div>
+    <div class="stat st-amber"><div class="lbl">Chỉ trong PMR</div><div class="val" id="s3">0</div></div>
+  </div>
+  <div class="card">
+    <div class="ch">
+      <h2><span class="dot" style="color:var(--blue)"></span>Chi tiết đối chiếu</h2>
+      <span class="badge" id="diff-badge">0 chênh lệch</span>
+    </div>
+    <div class="fbar">
+      <select id="f-st" onchange="renderTable()"><option value="all">Tất cả</option><option value="diff">✗ Lệch</option><option value="match">✓ Khớp</option><option value="pmronly">⚠ Chỉ PMR</option></select>
+      <select id="f-pmr" onchange="renderTable()"><option value="all">Tất cả mã PMR</option></select>
+      <select id="f-p" onchange="renderTable()"><option value="all">Ưu tiên 1 & 2</option><option value="1">Ưu tiên 1</option><option value="2">Ưu tiên 2</option></select>
+      <input id="f-q" placeholder="Tìm AppID hoặc tên..." oninput="renderTable()">
+      <div class="fbar-r">
+        <button class="btn" onclick="xpt(false)">⬇ Export</button>
+        <button class="btn btn-danger" onclick="xpt(true)">⬇ Chỉ lệch</button>
+      </div>
+    </div>
+    <div class="sum-bar" id="sum-bar">
+      <span class="lbl">Tổng Net theo PMR:</span>
+      <div class="sum-chips" id="sum-chips"></div>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>AppID / Key</th><th>Tên App</th><th>Mã PMR</th><th>Kỳ</th><th>P</th>
+        <th class="r">TPE</th><th class="r">Refund</th><th class="r">AVR</th><th class="r">Input Net</th>
+        <th class="r">PMR Pay</th><th class="r">PMR Ref</th><th class="r">PMR Net</th>
+        <th class="r">Chênh lệch</th><th>Trạng thái</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+      <tfoot id="tfoot" style="display:none"><tr>
+        <td colspan="5" style="padding:9px 12px;font-size:12px;color:var(--blue)">∑ Tổng</td>
+        <td class="num" id="ft-tpe"></td><td class="num" id="ft-ref"></td>
+        <td class="num" id="ft-avr"></td><td class="num" id="ft-net"></td>
+        <td class="num" id="ft-ppay"></td><td class="num" id="ft-pref"></td>
+        <td class="num" id="ft-pnet"></td><td class="num" id="ft-diff"></td><td></td>
+      </tr></tfoot>
+    </table></div>
+  </div>
+</div>
+</main>
+
+<script>
+// ── STATE ──
+const D = { folderHandle: null, fileIndex: {}, pmrSlots: [], pmrCnt: 0 };
+let rows = [];
+
+// ── UTILS ──
+function rf(f){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array'});res(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''}));}catch(e){rej(e);}};r.onerror=()=>rej(new Error('Lỗi đọc'));r.readAsArrayBuffer(f);}); }
+function pn(s){ return parseFloat(String(s||'').replace(/[,\s]/g,''))||0; }
+function N(v){ if(v===null||v===undefined||isNaN(v))return'—'; return Number(v).toLocaleString('vi-VN'); }
+function bindDZ(el,cb){ el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('drag');}); el.addEventListener('dragleave',()=>el.classList.remove('drag')); el.addEventListener('drop',async e=>{e.preventDefault();el.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)await cb(f);}); }
+
+// ── DATE HELPERS ──
+// Parse DD-MM-YYYY → Date
+function parseDMY(s){
+  if(!s)return null;
+  const str=String(s).trim();
+  const m=str.match(/^(\d{1,2})[.\-\/](\d{1,2})[.\-\/](\d{4})$/);
+  if(!m)return null;
+  return new Date(+m[3],+m[2]-1,+m[1]);
+}
+// Date → YYYYMMDD string (for file name)
+function toYMD(d){ return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`; }
+// Date → YYYY-MM-DD string (for folder name)
+function toFolderKey(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+// Get all dates in range [from, to] inclusive
+function dateRange(from, to){
+  const dates=[], cur=new Date(from);
+  while(cur<=to){ dates.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
+  return dates;
+}
+
+// ── FOLDER PICKER ──
+async function pickFolder(){
+  if(!window.showDirectoryPicker){ alert('Trình duyệt không hỗ trợ chọn folder. Vui lòng dùng Chrome hoặc Edge phiên bản mới.'); return; }
+  try{
+    const handle = await window.showDirectoryPicker({ mode:'read' });
+    D.folderHandle = handle;
+    document.getElementById('folder-btn').classList.add('loaded');
+    document.getElementById('folder-btn').textContent = '✓ ' + handle.name;
+    document.getElementById('folder-zone').classList.add('loaded');
+    await scanFolder(handle);
+    chk();
+  }catch(e){ if(e.name!=='AbortError') alert('Lỗi: '+e.message); }
+}
+
+// Scan folder → build fileIndex {YYYY-MM-DD: {tpe, ref, avr}}
+async function scanFolder(handle){
+  D.fileIndex = {};
+  for await(const [name, entry] of handle.entries()){
+    if(entry.kind!=='directory') continue;
+    // Folder name must match YYYY-MM-DD
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(name)) continue;
+    D.fileIndex[name] = { tpe:null, ref:null, avr:null };
+    for await(const [fname, fentry] of entry.entries()){
+      if(fentry.kind!=='file') continue;
+      const fl = fname.toLowerCase();
+      if(fl.startsWith('tpe_') && (fl.endsWith('.xlsx')||fl.endsWith('.xls')||fl.endsWith('.csv')))
+        D.fileIndex[name].tpe = fentry;
+      else if(fl.startsWith('refund_') && (fl.endsWith('.xlsx')||fl.endsWith('.xls')||fl.endsWith('.csv')))
+        D.fileIndex[name].ref = fentry;
+      else if((fl.startsWith('avr_')||fl.includes('avr')) && (fl.endsWith('.xlsx')||fl.endsWith('.xls')||fl.endsWith('.csv')))
+        D.fileIndex[name].avr = fentry;
+    }
+  }
+  renderFileIndex();
+  document.getElementById('folder-status').textContent = `✓ Tìm thấy ${Object.keys(D.fileIndex).length} ngày`;
+  document.getElementById('folder-badge').textContent = `${Object.keys(D.fileIndex).length} ngày`;
+  document.getElementById('folder-badge').className = 'badge b-teal';
+}
+
+function renderFileIndex(){
+  const keys = Object.keys(D.fileIndex).sort();
+  if(!keys.length){ document.getElementById('file-index').style.display='none'; return; }
+  document.getElementById('file-index').style.display='block';
+  document.getElementById('fi-body').innerHTML = keys.map(k=>{
+    const e=D.fileIndex[k];
+    const chips=[
+      e.tpe?'<span class="fi-chip fi-tpe">TPE ✓</span>':'<span class="fi-chip fi-miss">TPE ✗</span>',
+      e.ref?'<span class="fi-chip fi-ref">Refund ✓</span>':'<span class="fi-chip fi-miss">Refund ✗</span>',
+      e.avr?'<span class="fi-chip fi-avr">AVR ✓</span>':'<span class="fi-chip fi-miss">AVR ✗</span>',
+    ].join('');
+    return `<div class="fi-row"><span class="fi-date">${k}</span><div class="fi-files">${chips}</div></div>`;
+  }).join('');
+}
+
+// ── PMR SLOTS ──
+function addPmr(){ const id=++D.pmrCnt; D.pmrSlots.push({id,data:null,name:null}); renderPmr(); }
+function removePmr(id){ D.pmrSlots=D.pmrSlots.filter(s=>s.id!==id); renderPmr(); chk(); updatePmrPreview(); }
+async function loadPmr(id,f){
+  const sl=D.pmrSlots.find(s=>s.id===id); if(!sl)return;
+  sl.data=await rf(f); sl.name=f.name;
+  renderPmr(); chk(); updatePmrPreview();
+}
+function renderPmr(){
+  document.getElementById('pmr-badge').textContent=D.pmrSlots.length+' file';
+  document.getElementById('sl-pmr').innerHTML=D.pmrSlots.map((sl,i)=>`
+    <div class="slot-row">
+      <div class="slot-num">${i+1}</div>
+      <div>
+        <label class="dz ${sl.data?'ok':''}" id="dz-p-${sl.id}" for="fp-${sl.id}">
+          <div class="dz-ico">${sl.data?'✅':'📄'}</div>
+          <div class="dz-info">
+            <h3>PMR #${i+1}</h3>
+            <p>Col J: AppID_ZipPmtID · Col T: Mã PMR · Col E-F: Từ/Đến ngày</p>
+            <div class="dz-fname">${sl.name||'Kéo thả hoặc click để chọn'}</div>
+          </div>
+        </label>
+        <input type="file" id="fp-${sl.id}" accept=".xlsx,.xls,.csv" onchange="loadPmr(${sl.id},this.files[0])">
+      </div>
+      <button class="slot-remove" onclick="removePmr(${sl.id})">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('');
+  D.pmrSlots.forEach(sl=>{const dz=document.getElementById(`dz-p-${sl.id}`);if(dz)bindDZ(dz,f=>loadPmr(sl.id,f));});
+}
+
+// Preview: parse PMR date ranges and show which files will be loaded
+function updatePmrPreview(){
+  const pmrData = D.pmrSlots.filter(s=>s.data).flatMap(s=>s.data);
+  if(!pmrData.length){ document.getElementById('pmr-preview').style.display='none'; return; }
+
+  // Collect unique PMR codes + date ranges
+  const pmrRanges = {}; // code -> {from, to}
+  for(const row of pmrData){
+    const code = String(row[19]||'').trim(); // col T
+    const fromStr = String(row[4]||'').trim(); // col E
+    const toStr   = String(row[5]||'').trim(); // col F
+    if(!code||!fromStr||!toStr) continue;
+    const from = parseDMY(fromStr), to = parseDMY(toStr);
+    if(!from||!to) continue;
+    if(!pmrRanges[code]){pmrRanges[code]={from,to};}
+    else{
+      if(from<pmrRanges[code].from)pmrRanges[code].from=from;
+      if(to>pmrRanges[code].to)pmrRanges[code].to=to;
+    }
+  }
+
+  const warn = [];
+  const html = Object.entries(pmrRanges).sort((a,b)=>a[0].localeCompare(b[0])).map(([code,{from,to}])=>{
+    const dates = dateRange(from, to);
+    const chips = dates.map(d=>{
+      const key = toFolderKey(d);
+      const entry = D.fileIndex[key];
+      const ok = entry&&entry.tpe&&entry.ref&&entry.avr;
+      const partial = entry&&(entry.tpe||entry.ref||entry.avr)&&!ok;
+      if(!entry) warn.push(`${code}: thiếu folder ${key}`);
+      else if(!ok) warn.push(`${code}: folder ${key} thiếu file`);
+      return `<span class="fi-chip ${ok?'fi-ref':partial?'fi-avr':'fi-miss'}">${key.slice(5)}</span>`;
+    }).join('');
+    const fromFmt = `${String(from.getDate()).padStart(2,'0')}/${String(from.getMonth()+1).padStart(2,'0')}`;
+    const toFmt   = `${String(to.getDate()).padStart(2,'0')}/${String(to.getMonth()+1).padStart(2,'0')}`;
+    return `<div class="pp-row"><span class="pp-code">${code}</span><span class="pp-range">${fromFmt}→${toFmt}</span><div class="pp-files">${chips}</div></div>`;
+  }).join('');
+
+  document.getElementById('pp-rows').innerHTML = html;
+  document.getElementById('pmr-preview').style.display = html ? 'block' : 'none';
+
+  const wb = document.getElementById('warn-box');
+  if(warn.length){ wb.style.display='block'; wb.innerHTML='⚠ '+[...new Set(warn)].join('<br>⚠ '); }
+  else wb.style.display='none';
+}
+
+function chk(){
+  const hasPmr = D.pmrSlots.some(s=>s.data);
+  const hasFolder = D.folderHandle!==null;
+  document.getElementById('run-btn').disabled = !(hasPmr && hasFolder);
+}
+
+// ── READ FILE FROM FOLDER ENTRY ──
+async function readFileEntry(entry){
+  const file = await entry.getFile();
+  return rf(file);
+}
+
+// ── GET MERGED DATA FOR DATE RANGE ──
+async function getDataForRange(from, to){
+  const dates = dateRange(from, to);
+  const tpeRows=[], refRows=[], avrRows=[];
+  const missing=[];
+  for(const d of dates){
+    const key = toFolderKey(d);
+    const entry = D.fileIndex[key];
+    if(!entry){ missing.push(key); continue; }
+    if(entry.tpe){ const data=await readFileEntry(entry.tpe); for(let i=1;i<data.length;i++)tpeRows.push(data[i]); }
+    else missing.push(key+'/TPE');
+    if(entry.ref){ const data=await readFileEntry(entry.ref); for(let i=1;i<data.length;i++)refRows.push(data[i]); }
+    else missing.push(key+'/Refund');
+    if(entry.avr){ const data=await readFileEntry(entry.avr);
+      let st=0;
+      for(let i=0;i<Math.min(5,data.length);i++){if(data[i]&&String(data[i][3]).match(/\d/)){st=i;break;}}
+      for(let i=st;i<data.length;i++)avrRows.push(data[i]);
+    } else missing.push(key+'/AVR');
+  }
+  return{tpeRows,refRows,avrRows,missing};
+}
+
+// ── PARSE HELPERS ──
+function buildTPEMap(rows){
+  const map={},nameMap={},blankBases=new Set(),baseTotal={};
+  for(const r of rows){
+    const mid=String(r[1]||'').trim(); if(!mid)continue;
+    const zip=String(r[2]||'').trim();
+    const name=String(r[3]||'').trim();
+    const amt=pn(r[5]);
+    const key=zip?`${mid}_${zip}`:mid;
+    map[key]=(map[key]||0)+amt;
+    baseTotal[mid]=(baseTotal[mid]||0)+amt;
+    if(!zip)blankBases.add(mid);
+    if(name&&!nameMap[mid])nameMap[mid]=name;
+  }
+  return{map,nameMap,blankBases,baseTotal};
+}
+function buildRefMap(rows){
+  const map={},blankBases=new Set(),baseTotal={};
+  for(const r of rows){
+    const mid=String(r[1]||'').trim(); if(!mid)continue;
+    const zip=String(r[2]||'').trim();
+    const amt=pn(r[5]);
+    const key=zip?`${mid}_${zip}`:mid;
+    map[key]=(map[key]||0)+amt;
+    baseTotal[mid]=(baseTotal[mid]||0)+amt;
+    if(!zip)blankBases.add(mid);
+  }
+  return{map,blankBases,baseTotal};
+}
+function buildAVRMap(rows){
+  const map={};
+  for(const r of rows){
+    const key=String(r[3]||'').trim(); if(!key)continue;
+    map[key]=(map[key]||0)+pn(r[16]);
+  }
+  return map;
+}
+function buildPMRMaps(allRows){
+  const fullMap={},baseMap={},allCodes=new Set(),pmrPeriods={};
+  for(const r of allRows){
+    const raw=String(r[9]||'').trim(); if(!raw)continue;
+    const parts=raw.split('_'),base=parts[0];
+    const code=String(r[19]||'').trim();
+    const appName=String(r[10]||'').trim();
+    const U=pn(r[20]),AB=pn(r[27]),W=Math.abs(pn(r[22])),AD=Math.abs(pn(r[29]));
+    const pay=U+AB,ref=W+AD;
+    // full key
+    if(!fullMap[raw])fullMap[raw]={pay:0,ref:0,appName:'',codes:new Set(),base};
+    fullMap[raw].pay+=pay; fullMap[raw].ref+=ref;
+    if(appName&&!fullMap[raw].appName)fullMap[raw].appName=appName;
+    if(code)fullMap[raw].codes.add(code);
+    // base key
+    if(!baseMap[base])baseMap[base]={pay:0,ref:0,appName:'',codes:new Set()};
+    baseMap[base].pay+=pay; baseMap[base].ref+=ref;
+    if(appName&&!baseMap[base].appName)baseMap[base].appName=appName;
+    if(code){baseMap[base].codes.add(code);allCodes.add(code);}
+    // period per code
+    const fromStr=String(r[4]||'').trim(),toStr=String(r[5]||'').trim();
+    if(code&&fromStr&&toStr&&!pmrPeriods[code])pmrPeriods[code]={from:fromStr,to:toStr};
+  }
+  for(const k in fullMap)fullMap[k].codes=[...fullMap[k].codes];
+  for(const k in baseMap)baseMap[k].codes=[...baseMap[k].codes];
+  return{fullMap,baseMap,allCodes,pmrPeriods};
+}
+
+// ── RUN ──
+async function run(){
+  document.getElementById('run-btn').disabled=true;
+  document.getElementById('run-btn').innerHTML='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Đang tải dữ liệu...';
+  const tol=parseFloat(document.getElementById('c-tol').value)||0;
+
+  try{
+    // Collect all PMR rows
+    const allPmrRows=[];
+    for(const sl of D.pmrSlots){if(sl.data)for(let i=2;i<sl.data.length;i++)allPmrRows.push(sl.data[i]);}
+
+    const {fullMap,baseMap,allCodes,pmrPeriods}=buildPMRMaps(allPmrRows);
+
+    // Group PMR fullKeys by baseId
+    const byBase={};
+    for(const fkey of Object.keys(fullMap)){
+      const base=fkey.includes('_')?fkey.split('_')[0]:fkey;
+      if(!byBase[base])byBase[base]=[];
+      byBase[base].push(fkey);
+    }
+
+    // For each unique PMR code, load the date range data
+    const dataByCode={}; // code -> {tpe,ref,avr}
+    const allMissing=[];
+    for(const [code,{from:fromStr,to:toStr}] of Object.entries(pmrPeriods)){
+      const from=parseDMY(fromStr),to=parseDMY(toStr);
+      if(!from||!to)continue;
+      const {tpeRows,refRows,avrRows,missing}=await getDataForRange(from,to);
+      dataByCode[code]={
+        tpe:buildTPEMap(tpeRows),
+        ref:buildRefMap(refRows),
+        avr:buildAVRMap(avrRows)
+      };
+      allMissing.push(...missing);
+    }
+
+    // Merge data across all codes (for each base, use the code(s) that base belongs to)
+    // Build combined maps per base considering its PMR codes
+    function getMapsForBase(base,fkeys){
+      // Get all codes that appear in these fkeys
+      const codes=new Set();
+      fkeys.forEach(fk=>{if(fullMap[fk])fullMap[fk].codes.forEach(c=>codes.add(c));});
+      // Merge tpe/ref/avr across all codes for this base
+      const tpeMap={},tpeNames={},tpeBlanks=new Set(),tpeBase={};
+      const refMap={},refBlanks=new Set(),refBase={};
+      const avrMap={};
+      for(const code of codes){
+        if(!dataByCode[code])continue;
+        const d=dataByCode[code];
+        for(const [k,v] of Object.entries(d.tpe.map)){tpeMap[k]=(tpeMap[k]||0)+v;}
+        for(const [k,v] of Object.entries(d.tpe.nameMap)){if(!tpeNames[k])tpeNames[k]=v;}
+        d.tpe.blankBases.forEach(b=>tpeBlanks.add(b));
+        for(const [k,v] of Object.entries(d.tpe.baseTotal)){tpeBase[k]=(tpeBase[k]||0)+v;}
+        for(const [k,v] of Object.entries(d.ref.map)){refMap[k]=(refMap[k]||0)+v;}
+        d.ref.blankBases.forEach(b=>refBlanks.add(b));
+        for(const [k,v] of Object.entries(d.ref.baseTotal)){refBase[k]=(refBase[k]||0)+v;}
+        for(const [k,v] of Object.entries(d.avr)){avrMap[k]=(avrMap[k]||0)+v;}
+      }
+      return{tpeMap,tpeNames,tpeBlanks,tpeBase,refMap,refBlanks,refBase,avrMap};
+    }
+
+    // Get period string for codes
+    function getPeriod(fkeys){
+      const codes=new Set();
+      fkeys.forEach(fk=>{if(fullMap[fk])fullMap[fk].codes.forEach(c=>codes.add(c));});
+      return [...codes].map(c=>pmrPeriods[c]?`${pmrPeriods[c].from}→${pmrPeriods[c].to}`:'').filter(Boolean).join(', ');
+    }
+
+    rows=[];
+    const handledBases=new Set();
+
+    for(const [base,fkeys] of Object.entries(byBase)){
+      const {tpeMap,tpeNames,tpeBlanks,tpeBase,refMap,refBlanks,refBase,avrMap}=getMapsForBase(base,fkeys);
+      const pmrCodes=baseMap[base]?baseMap[base].codes:[];
+      const period=getPeriod(fkeys);
+      const hasBlankZip=tpeBlanks.has(base)||refBlanks.has(base);
+
+      if(hasBlankZip){
+        // ── P2: gộp tổng tất cả dòng của base ──
+        const pmr=baseMap[base];
+        const tpe=tpeBase[base]||0;
+        const ref=refBase[base]||0;
+        let avr=avrMap[base]||0;
+        for(const [ak,av] of Object.entries(avrMap)){if(ak!==base&&ak.split('_')[0]===base)avr+=av;}
+        const inputNet=tpe-ref-avr;
+        const pmrNet=pmr?pmr.pay-pmr.ref:null;
+        const diff=pmrNet!==null?inputNet-pmrNet:null;
+        const st=pmrNet===null?'pmronly':(Math.abs(diff)<=tol?'match':'diff');
+        rows.push({key:base,appName:(pmr&&pmr.appName)||tpeNames[base]||'',codes:pmrCodes,period,pri:2,tpe,ref,avr,inputNet,pmrPay:pmr?pmr.pay:null,pmrRef:pmr?pmr.ref:null,pmrNet,diff,st});
+        handledBases.add(base);
+      } else {
+        // ── P1: match 1:1 fullKey ──
+        for(const fkey of fkeys){
+          const pmr=fullMap[fkey];
+          const tpe=tpeMap[fkey]||0;
+          const ref=refMap[fkey]||0;
+          const avr=avrMap[fkey]||0;
+          const inputNet=tpe-ref-avr;
+          const pmrNet=pmr.pay-pmr.ref;
+          const diff=inputNet-pmrNet;
+          const st=Math.abs(diff)<=tol?'match':'diff';
+          rows.push({key:fkey,appName:pmr.appName||tpeNames[base]||'',codes:pmr.codes,period,pri:1,tpe,ref,avr,inputNet,pmrPay:pmr.pay,pmrRef:pmr.ref,pmrNet,diff,st});
+        }
+        handledBases.add(base);
+      }
+    }
+
+    // Stats
+    const tot=rows.length,ok=rows.filter(r=>r.st==='match').length;
+    const err=rows.filter(r=>r.st==='diff').length,po=rows.filter(r=>r.st==='pmronly').length;
+    ['s0','s1','s2','s3'].forEach((id,i)=>document.getElementById(id).textContent=[tot,ok,err,po][i]);
+    const bdg=document.getElementById('diff-badge');
+    bdg.textContent=err+' chênh lệch'; bdg.className='badge '+(err>0?'b-err':'b-ok');
+
+    // PMR code filter
+    const sel=document.getElementById('f-pmr');
+    sel.innerHTML='<option value="all">Tất cả mã PMR</option>';
+    [...allCodes].sort().forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+
+    if(allMissing.length){
+      const wb2=document.getElementById('warn-box');
+      wb2.style.display='block';
+      wb2.innerHTML='⚠ Một số file không tìm thấy:<br>'+[...new Set(allMissing)].map(m=>`&nbsp;&nbsp;• ${m}`).join('<br>');
+    }
+
+    document.getElementById('results').style.display='block';
+    renderTable();
+  }catch(e){
+    alert('Lỗi: '+e.message);
+  }finally{
+    document.getElementById('run-btn').disabled=false;
+    document.getElementById('run-btn').innerHTML='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg> Chạy đối chiếu';
+  }
+}
+
+// ── RENDER TABLE ──
+function renderTable(){
+  const fs=document.getElementById('f-st').value;
+  const fp=document.getElementById('f-pmr').value;
+  const fp2=document.getElementById('f-p').value;
+  const q=document.getElementById('f-q').value.toLowerCase();
+  let filtered=rows.filter(r=>{
+    if(fs!=='all'&&r.st!==fs)return false;
+    if(fp!=='all'&&!r.codes.includes(fp))return false;
+    if(fp2!=='all'&&String(r.pri)!==fp2)return false;
+    if(q&&!r.key.toLowerCase().includes(q)&&!r.appName.toLowerCase().includes(q))return false;
+    return true;
+  });
+
+  // Summary chips
+  const pmrTotals={};
+  filtered.forEach(r=>r.codes.forEach(c=>{pmrTotals[c]=(pmrTotals[c]||0)+(r.pmrNet||0);}));
+  const entries=Object.entries(pmrTotals).sort((a,b)=>a[0].localeCompare(b[0]));
+  const sb=document.getElementById('sum-bar');
+  if(entries.length){
+    sb.style.display='flex';
+    document.getElementById('sum-chips').innerHTML=entries.map(([c,t])=>`<span class="s-chip"><span class="code">${c}</span><span style="color:var(--muted);font-size:10px">|</span><span class="amt">${N(t)}</span></span>`).join('');
+  }else sb.style.display='none';
+
+  const tb=document.getElementById('tbody');
+  if(!filtered.length){tb.innerHTML='<tr><td colspan="14" class="empty">Không có dữ liệu</td></tr>';document.getElementById('tfoot').style.display='none';return;}
+  const tag=s=>s==='match'?'<span class="tag tag-ok">✓ Khớp</span>':s==='diff'?'<span class="tag tag-err">✗ Lệch</span>':'<span class="tag tag-warn">⚠ Chỉ PMR</span>';
+  const dH=d=>d===null?'—':d===0?`<span style="color:var(--muted)">0</span>`:`<span class="${d>0?'diff-hi':'diff-lo'}">${d>0?'+':''}${N(d)}</span>`;
+  tb.innerHTML=filtered.map(r=>`<tr>
+    <td class="app-id">${r.key}</td>
+    <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.appName}">${r.appName||'—'}</td>
+    <td>${r.codes.map(c=>'<span class="chip">'+c+'</span>').join('')||'—'}</td>
+    <td style="font-size:11px;color:var(--text2);white-space:nowrap">${r.period||'—'}</td>
+    <td><span class="chip ${r.pri===2?'chip-p2':''}">P${r.pri}</span></td>
+    <td class="num">${N(r.tpe)}</td><td class="num">${N(r.ref)}</td><td class="num">${N(r.avr)}</td>
+    <td class="num" style="font-weight:700">${N(r.inputNet)}</td>
+    <td class="num">${r.pmrPay!==null?N(r.pmrPay):'—'}</td>
+    <td class="num">${r.pmrRef!==null?N(r.pmrRef):'—'}</td>
+    <td class="num" style="font-weight:700">${r.pmrNet!==null?N(r.pmrNet):'—'}</td>
+    <td class="num">${dH(r.diff)}</td><td>${tag(r.st)}</td>
+  </tr>`).join('');
+
+  const sf=['tpe','ref','avr','inputNet','pmrPay','pmrRef','pmrNet','diff'];
+  const ids=['ft-tpe','ft-ref','ft-avr','ft-net','ft-ppay','ft-pref','ft-pnet','ft-diff'];
+  sf.forEach((f,i)=>{const s=filtered.reduce((a,r)=>a+(typeof r[f]==='number'?r[f]:0),0);document.getElementById(ids[i]).textContent=N(s);});
+  document.getElementById('tfoot').style.display='';
+}
+
+// ── EXPORT ──
+function xpt(diffOnly){
+  const SL={match:'Khớp',diff:'Lệch',pmronly:'Chỉ PMR'};
+  const fs=document.getElementById('f-st').value,fp=document.getElementById('f-pmr').value,fp2=document.getElementById('f-p').value,q=document.getElementById('f-q').value.toLowerCase();
+  const r2=rows.filter(r=>{
+    if(diffOnly&&r.st!=='diff')return false;
+    if(!diffOnly){if(fs!=='all'&&r.st!==fs)return false;if(fp!=='all'&&!r.codes.includes(fp))return false;if(fp2!=='all'&&String(r.pri)!==fp2)return false;if(q&&!r.key.toLowerCase().includes(q)&&!r.appName.toLowerCase().includes(q))return false;}
+    return true;
+  });
+  const hdr='AppID/Key,Tên App,Mã PMR,Kỳ,Ưu tiên,TPE,Refund,AVR,Input Net,PMR Payment,PMR Refund,PMR Net,Chênh lệch,Trạng thái';
+  const body=r2.map(r=>[r.key,`"${r.appName}"`,`"${r.codes.join('; ')}"`,`"${r.period}"`,`P${r.pri}`,r.tpe,r.ref,r.avr,r.inputNet,r.pmrPay??'',r.pmrRef??'',r.pmrNet??'',r.diff??'',SL[r.st]].join(',')).join('\n');
+  const b=new Blob(['\uFEFF'+hdr+'\n'+body],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download=(diffOnly?'chenh_lech':'doi_chieu')+'_3source_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+// Init
+addPmr();
+</script>
+</body>
+</html>
