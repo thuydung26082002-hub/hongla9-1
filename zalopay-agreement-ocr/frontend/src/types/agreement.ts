@@ -70,6 +70,7 @@ export interface Agreement {
   source_file_name?: string | null
   source_drive_file_id?: string | null
   drive_web_link?: string | null
+  s3_key?: string | null
   created_at: string
   updated_at: string
   approved_by?: string | null

@@ -18,6 +18,7 @@ class AgreementOut(BaseModel):
     source_file_name: Optional[str]
     source_drive_file_id: Optional[str]
     drive_web_link: Optional[str]
+    s3_key: Optional[str]
     created_at: datetime
     updated_at: datetime
     approved_by: Optional[str]

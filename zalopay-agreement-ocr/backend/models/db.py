@@ -45,6 +45,7 @@ class Agreement(Base):
     source_file_name = Column(String, nullable=True)
     source_drive_file_id = Column(String, nullable=True, index=True)
     drive_web_link = Column(String, nullable=True)
+    s3_key = Column(String, nullable=True, index=True)
     created_at = Column(TZDateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(TZDateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     approved_by = Column(String, nullable=True)

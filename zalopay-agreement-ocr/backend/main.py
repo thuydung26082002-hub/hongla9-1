@@ -12,8 +12,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from models.database import init_db
 from routers.agreements import router as agreements_router
 from routers.storage import router as storage_router
+from worker.s3_poller import start_poller as start_s3_poller
 from worker.drive_poller import start_poller as start_drive_poller
-from storage.drive import drive_web_link_from_id
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
 logger = logging.getLogger(__name__)
@@ -21,22 +21,43 @@ logger = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).parent / "static"
 
 
-async def _process_drive_file(file_bytes: bytes, filename: str, drive_file_id: str):
-    """Callback for Drive poller — creates Agreement from downloaded Drive file."""
+async def _process_s3_file(file_bytes: bytes, filename: str, s3_key: str):
+    """Callback for S3 poller — creates Agreement from S3 file."""
     from models.database import AsyncSessionLocal
     from models.db import Agreement, AgreementStatus
     import uuid as _uuid
 
     agreement_id = str(_uuid.uuid4())
-    web_link = drive_web_link_from_id(drive_file_id)
+    async with AsyncSessionLocal() as db:
+        ag = Agreement(
+            id=agreement_id,
+            status=AgreementStatus.OCR_PROCESSING,
+            source_file_name=filename,
+            s3_key=s3_key,
+        )
+        db.add(ag)
+        await db.commit()
 
+    from routers.agreements import _run_ocr_and_update
+    await _run_ocr_and_update(agreement_id, file_bytes, filename)
+    logger.info("S3 file processed: %s → agreement %s", filename, agreement_id)
+
+
+async def _process_drive_file(file_bytes: bytes, filename: str, drive_file_id: str):
+    """Callback for Drive poller — creates Agreement from downloaded Drive file."""
+    from models.database import AsyncSessionLocal
+    from models.db import Agreement, AgreementStatus
+    from storage.drive import drive_web_link_from_id
+    import uuid as _uuid
+
+    agreement_id = str(_uuid.uuid4())
     async with AsyncSessionLocal() as db:
         ag = Agreement(
             id=agreement_id,
             status=AgreementStatus.OCR_PROCESSING,
             source_file_name=filename,
             source_drive_file_id=drive_file_id,
-            drive_web_link=web_link,
+            drive_web_link=drive_web_link_from_id(drive_file_id),
         )
         db.add(ag)
         await db.commit()
@@ -50,6 +71,7 @@ async def _process_drive_file(file_bytes: bytes, filename: str, drive_file_id: s
 async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized")
+    asyncio.create_task(start_s3_poller(_process_s3_file))
     asyncio.create_task(start_drive_poller(_process_drive_file))
     yield
 

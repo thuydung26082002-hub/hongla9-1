@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Upload, FileText, ExternalLink, RefreshCw, ArrowRight, CloudOff, Loader2 } from 'lucide-react'
+import { Upload, FileText, Download, Trash2, RefreshCw, ArrowRight, CloudOff, Loader2 } from 'lucide-react'
 import type { StorageFile } from '../types/agreement'
 import { useStorage } from '../hooks/useApi'
 
@@ -43,6 +43,7 @@ export default function StorageTab({ role, onOpenAgreement }: Props) {
   const storage = useStorage()
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [deletingKey, setDeletingKey] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -62,24 +63,48 @@ export default function StorageTab({ role, onOpenAgreement }: Props) {
     }
   }
 
-  // S3/Drive not configured
+  const handleDownload = async (key: string, name: string) => {
+    try {
+      const url = await storage.getDownloadUrl(key)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      a.click()
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  const handleDelete = async (key: string) => {
+    if (!confirm('Xóa file này? Hồ sơ OCR liên quan sẽ không bị xóa.')) return
+    setDeletingKey(key)
+    try {
+      await storage.deleteFile(key)
+      await storage.fetchFiles()
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : String(e))
+    } finally {
+      setDeletingKey(null)
+    }
+  }
+
+  // S3 not configured
   if (storage.configured === false) {
     return (
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-10 text-center space-y-3">
         <CloudOff size={40} className="mx-auto text-gray-300" />
         <p className="font-semibold text-[#1A1F36]">Kho lưu trữ chưa được cấu hình</p>
         <p className="text-sm text-gray-500 max-w-sm mx-auto">
-          Điền thông tin Google Drive vào <code className="bg-gray-100 px-1 rounded">.env.runtime</code>:
+          Điền thông tin S3 vào <code className="bg-gray-100 px-1 rounded">.env.runtime</code>:
         </p>
         <pre className="text-xs text-left bg-gray-50 border border-gray-200 rounded-lg p-3 inline-block text-[#1A1F36]">
-{`DRIVE_FOLDER_ID=<folder-id>
-DRIVE_SERVICE_ACCOUNT_JSON=<nội dung key.json>`}
+{`S3_ENDPOINT_URL=https://hcm04.vstorage.vngcloud.vn
+S3_ACCESS_KEY=<access key>
+S3_SECRET_KEY=<secret key>
+S3_BUCKET_NAME=zalopay-agreements`}
         </pre>
         <p className="text-xs text-gray-400">
-          Tạo Service Account tại: <span className="font-mono">console.cloud.google.com → IAM → Service Accounts</span>
-        </p>
-        <p className="text-xs text-gray-400">
-          Share folder Drive với email service account (<span className="font-mono">...@...iam.gserviceaccount.com</span>), quyền <b>Editor</b>
+          Tạo credentials tại: <span className="font-mono">vstorage.vngcloud.vn → IAM → Service Account → S3 credentials</span>
         </p>
       </div>
     )
@@ -89,7 +114,7 @@ DRIVE_SERVICE_ACCOUNT_JSON=<nội dung key.json>`}
 
   return (
     <div className="space-y-5">
-      {/* Upload zone — Sales only */}
+      {/* Upload zone */}
       {role === 'Sales' && (
         <div
           className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer
@@ -111,13 +136,13 @@ DRIVE_SERVICE_ACCOUNT_JSON=<nội dung key.json>`}
           />
           {uploading ? (
             <div className="flex items-center justify-center gap-2 text-sm text-[#0032C8]">
-              <Loader2 size={18} className="animate-spin" /> Đang upload lên Google Drive và kích hoạt OCR…
+              <Loader2 size={18} className="animate-spin" /> Đang upload và kích hoạt OCR…
             </div>
           ) : (
             <>
               <Upload size={32} className="mx-auto mb-2 text-[#0032C8]" />
               <p className="font-semibold text-[#1A1F36] text-sm">Kéo thả hoặc click để upload</p>
-              <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG · Lưu vĩnh viễn trên Google Drive · Tự động OCR</p>
+              <p className="text-xs text-gray-400 mt-1">PDF, JPG, PNG · Tự động OCR sau khi upload</p>
             </>
           )}
         </div>
@@ -190,23 +215,29 @@ DRIVE_SERVICE_ACCOUNT_JSON=<nội dung key.json>`}
                         {file.has_agreement && file.agreement_id && (
                           <button
                             onClick={() => onOpenAgreement(file.agreement_id!)}
-                            title="Xem hồ sơ OCR"
+                            title="Xem hồ sơ"
                             className="p-1.5 text-[#0030CC] hover:bg-blue-50 rounded-lg transition-colors"
                           >
                             <ArrowRight size={15} />
                           </button>
                         )}
-                        {file.web_link && (
-                          <a
-                            href={file.web_link}
-                            target="_blank"
-                            rel="noreferrer"
-                            title="Mở trên Google Drive"
-                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors inline-flex"
-                          >
-                            <ExternalLink size={15} />
-                          </a>
-                        )}
+                        <button
+                          onClick={() => handleDownload(file.key, file.name)}
+                          title="Tải xuống"
+                          className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <Download size={15} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(file.key)}
+                          disabled={deletingKey === file.key}
+                          title="Xóa file"
+                          className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
+                        >
+                          {deletingKey === file.key
+                            ? <Loader2 size={15} className="animate-spin" />
+                            : <Trash2 size={15} />}
+                        </button>
                       </div>
                     </td>
                   </tr>

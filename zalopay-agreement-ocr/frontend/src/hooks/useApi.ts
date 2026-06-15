@@ -124,8 +124,20 @@ export function useStorage() {
     fd.append('actor', actor)
     const r = await window.fetch(`${STORAGE}/upload`, { method: 'POST', body: fd })
     if (!r.ok) throw new Error(await r.text())
-    return r.json() as Promise<{ agreement_id: string; drive_file_id: string; name: string; web_link: string }>
+    return r.json() as Promise<{ agreement_id: string; s3_key: string; name: string }>
   }, [])
 
-  return { files, loading, configured, checkStatus, fetchFiles, upload }
+  const getDownloadUrl = useCallback(async (key: string): Promise<string> => {
+    const r = await window.fetch(`${STORAGE}/download?key=${encodeURIComponent(key)}`)
+    if (!r.ok) throw new Error('Không lấy được link download')
+    const d = await r.json()
+    return d.url
+  }, [])
+
+  const deleteFile = useCallback(async (key: string) => {
+    const r = await window.fetch(`${STORAGE}/files?key=${encodeURIComponent(key)}`, { method: 'DELETE' })
+    if (!r.ok) throw new Error(await r.text())
+  }, [])
+
+  return { files, loading, configured, checkStatus, fetchFiles, upload, getDownloadUrl, deleteFile }
 }
