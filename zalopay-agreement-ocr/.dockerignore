@@ -10,3 +10,5 @@ __pycache__/
 .gitignore
 frontend/node_modules/
 frontend/dist/
+.greennode.json
+.agentbase/

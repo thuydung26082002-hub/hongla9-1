@@ -1,16 +1,16 @@
 import uuid
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from models.db import Agreement, AuditLog, AgreementStatus
 from models.schemas import (
-    AgreementOut, AuditLogOut, ReviewDataUpdateRequest,
-    ApproveRequest, RejectRequest, ActivateRequest,
+    AgreementOut, AuditLogOut, PaginatedAgreements,
+    ReviewDataUpdateRequest, ApproveRequest, RejectRequest, ActivateRequest,
 )
 from models.database import get_db
 from ocr.client import extract_from_file, _compute_avg_confidence
@@ -24,17 +24,23 @@ async def _log(db: AsyncSession, agreement_id: str, actor: str, action: str, **k
     await db.flush()
 
 
-# ── List ──────────────────────────────────────────────────────────────────────
-@router.get("", response_model=list[AgreementOut])
+# ── List (paginated) ──────────────────────────────────────────────────────────
+@router.get("", response_model=PaginatedAgreements)
 async def list_agreements(
     status: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
     q = select(Agreement).order_by(Agreement.created_at.desc())
     if status:
         q = q.where(Agreement.status == status)
-    result = await db.execute(q)
-    return result.scalars().all()
+
+    total: int = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one()
+    items = (await db.execute(q.offset((page - 1) * size).limit(size))).scalars().all()
+    pages = max(1, (total + size - 1) // size)
+
+    return PaginatedAgreements(items=list(items), total=total, page=page, size=size, pages=pages)
 
 
 # ── Get detail ────────────────────────────────────────────────────────────────
@@ -95,7 +101,7 @@ async def _run_ocr_and_update(agreement_id: str, file_bytes: bytes, filename: st
                 ag.ten_doi_tac = partner.get("ten_doi_tac")
                 ag.app_payment_channel = partner.get("app_payment_channel")
                 ag.status = AgreementStatus.PENDING_REVIEW
-                ag.updated_at = datetime.utcnow()
+                ag.updated_at = datetime.now(timezone.utc)
                 await _log(db, agreement_id, "system", "ocr_complete",
                            note=f"OCR xong — confidence={conf}")
                 await db.commit()
@@ -120,7 +126,7 @@ async def update_reviewed_data(
     if not ag:
         raise HTTPException(404)
     ag.reviewed_data = body.reviewed_data
-    ag.updated_at = datetime.utcnow()
+    ag.updated_at = datetime.now(timezone.utc)
     await _log(db, agreement_id, body.actor, "data_update", note="Cập nhật dữ liệu review")
     await db.commit()
     return {"ok": True}
@@ -158,7 +164,7 @@ async def edit_field(
         pass
 
     ag.reviewed_data = reviewed
-    ag.updated_at = datetime.utcnow()
+    ag.updated_at = datetime.now(timezone.utc)
     await _log(db, agreement_id, actor, "field_edit",
                field_name=field_path, old_value=old_val, new_value=new_value, ai_value=ai_val)
     await db.commit()
@@ -179,8 +185,8 @@ async def approve(
         raise HTTPException(400, f"Không thể phê duyệt ở trạng thái: {ag.status}")
     ag.status = AgreementStatus.APPROVED
     ag.approved_by = body.actor
-    ag.approved_at = datetime.utcnow()
-    ag.updated_at = datetime.utcnow()
+    ag.approved_at = datetime.now(timezone.utc)
+    ag.updated_at = datetime.now(timezone.utc)
     await _log(db, agreement_id, body.actor, "approve")
     await db.commit()
     return {"ok": True, "status": ag.status}
@@ -200,7 +206,7 @@ async def reject(
         raise HTTPException(400, f"Không thể từ chối ở trạng thái: {ag.status}")
     ag.status = AgreementStatus.REJECTED
     ag.rejection_note = body.note
-    ag.updated_at = datetime.utcnow()
+    ag.updated_at = datetime.now(timezone.utc)
     await _log(db, agreement_id, body.actor, "reject", note=body.note)
     await db.commit()
     return {"ok": True, "status": ag.status}
@@ -230,7 +236,7 @@ async def activate(
             raise HTTPException(502, f"Push sang hệ thống chính thức thất bại: {e}")
 
     ag.status = AgreementStatus.ACTIVATED
-    ag.updated_at = datetime.utcnow()
+    ag.updated_at = datetime.now(timezone.utc)
     await _log(db, agreement_id, body.actor, "activate")
     await db.commit()
     return {"ok": True, "status": ag.status}
@@ -245,3 +251,33 @@ async def get_audit(agreement_id: str, db: AsyncSession = Depends(get_db)):
         .order_by(AuditLog.created_at.asc())
     )
     return result.scalars().all()
+
+
+@router.post("/{agreement_id}/reconcile")
+async def reconcile_excel(
+    agreement_id: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload Excel nội bộ → đối soát với biểu phí hợp đồng đã OCR."""
+    ag = await db.get(Agreement, agreement_id)
+    if not ag:
+        raise HTTPException(404, "Không tìm thấy hồ sơ")
+
+    data = ag.reviewed_data or ag.ai_extracted_data
+    if not data:
+        raise HTTPException(400, "Hồ sơ chưa có dữ liệu OCR")
+
+    allowed = {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+    }
+    fname = (file.filename or "").lower()
+    if file.content_type not in allowed and not fname.endswith((".xlsx", ".xls")):
+        raise HTTPException(400, "Chỉ chấp nhận file Excel (.xlsx, .xls)")
+
+    file_bytes = await file.read()
+
+    from reconcile import reconcile
+    result = reconcile(file_bytes, data)
+    return result

@@ -2,7 +2,7 @@
 FROM node:20-alpine AS fe
 WORKDIR /fe
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm install
 COPY frontend/ .
 RUN npm run build
 # Output: /fe/dist

@@ -1,17 +1,25 @@
 import { useState, useCallback } from 'react'
-import type { Agreement, AuditLog, ExtractedData } from '../types/agreement'
+import type { Agreement, AuditLog, ExtractedData, StorageFile } from '../types/agreement'
 
 const BASE = '/api/agreements'
+const STORAGE = '/api/storage'
 
 export function useAgreements() {
   const [agreements, setAgreements] = useState<Agreement[]>([])
+  const [total, setTotal] = useState(0)
+  const [pages, setPages] = useState(1)
+  const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(false)
 
-  const fetch = useCallback(async () => {
+  const fetch = useCallback(async (page = 1, size = 10) => {
     setLoading(true)
     try {
-      const r = await window.fetch(BASE)
-      setAgreements(await r.json())
+      const r = await window.fetch(`${BASE}?page=${page}&size=${size}`)
+      const data = await r.json()
+      setAgreements(data.items ?? [])
+      setTotal(data.total ?? 0)
+      setPages(data.pages ?? 1)
+      setCurrentPage(data.page ?? page)
     } finally {
       setLoading(false)
     }
@@ -67,5 +75,59 @@ export function useAgreements() {
     return r.json()
   }, [])
 
-  return { agreements, loading, fetch, upload, approve, reject, activate, updateData, getAuditLog }
+  return {
+    agreements, total, pages, currentPage, loading,
+    fetch, upload, approve, reject, activate, updateData, getAuditLog,
+  }
+}
+
+export function useStorage() {
+  const [files, setFiles] = useState<StorageFile[]>([])
+  const [loading, setLoading] = useState(false)
+  const [configured, setConfigured] = useState<boolean | null>(null)
+
+  const checkStatus = useCallback(async () => {
+    const r = await window.fetch(`${STORAGE}/status`)
+    const d = await r.json()
+    setConfigured(d.configured)
+    return d.configured as boolean
+  }, [])
+
+  const fetchFiles = useCallback(async () => {
+    setLoading(true)
+    try {
+      const r = await window.fetch(`${STORAGE}/files`)
+      if (r.ok) {
+        setFiles(await r.json())
+        setConfigured(true)
+      } else if (r.status === 503) {
+        setConfigured(false)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const upload = useCallback(async (file: File, actor = 'sales') => {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('actor', actor)
+    const r = await window.fetch(`${STORAGE}/upload`, { method: 'POST', body: fd })
+    if (!r.ok) throw new Error(await r.text())
+    return r.json() as Promise<{ agreement_id: string; s3_key: string; name: string }>
+  }, [])
+
+  const getDownloadUrl = useCallback(async (key: string): Promise<string> => {
+    const r = await window.fetch(`${STORAGE}/download?key=${encodeURIComponent(key)}`)
+    if (!r.ok) throw new Error('Không lấy được link download')
+    const d = await r.json()
+    return d.url
+  }, [])
+
+  const deleteFile = useCallback(async (key: string) => {
+    const r = await window.fetch(`${STORAGE}/files?key=${encodeURIComponent(key)}`, { method: 'DELETE' })
+    if (!r.ok) throw new Error(await r.text())
+  }, [])
+
+  return { files, loading, configured, checkStatus, fetchFiles, upload, getDownloadUrl, deleteFile }
 }

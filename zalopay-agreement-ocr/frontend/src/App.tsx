@@ -6,9 +6,12 @@ import Stepper from './components/Stepper'
 import UploadZone from './components/UploadZone'
 import AgreementTable from './components/AgreementTable'
 import ReviewModal from './components/ReviewModal'
+import StorageTab from './components/StorageTab'
 import ToastContainer, { type ToastMsg } from './components/Toast'
+import { List, HardDrive } from 'lucide-react'
 
 type Role = 'Sales' | 'Kế toán'
+type Tab = 'agreements' | 'storage'
 
 let toastId = 0
 
@@ -24,6 +27,7 @@ function activeStep(agreements: Agreement[]): number {
 
 export default function App() {
   const [role, setRole] = useState<Role>('Kế toán')
+  const [tab, setTab] = useState<Tab>('agreements')
   const [selected, setSelected] = useState<Agreement | null>(null)
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [toasts, setToasts] = useState<ToastMsg[]>([])
@@ -43,10 +47,10 @@ export default function App() {
 
   // Initial load + polling
   useEffect(() => {
-    api.fetch()
-    const interval = setInterval(() => api.fetch(), 15000)
+    api.fetch(1)
+    const interval = setInterval(() => api.fetch(api.currentPage), 15000)
     return () => clearInterval(interval)
-  }, [api.fetch])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Notify kế toán when new pending agreements appear
   useEffect(() => {
@@ -64,12 +68,28 @@ export default function App() {
     setAuditLogs(logs)
   }, [api.getAuditLog])
 
+  // Open review by agreement ID (used from StorageTab)
+  const openReviewById = useCallback(async (agreementId: string) => {
+    // Try from current list first, otherwise fetch directly
+    let ag = api.agreements.find(a => a.id === agreementId)
+    if (!ag) {
+      try {
+        const r = await window.fetch(`/api/agreements/${agreementId}`)
+        if (r.ok) ag = await r.json()
+      } catch { /* ignore */ }
+    }
+    if (ag) {
+      setTab('agreements')
+      await openReview(ag)
+    }
+  }, [api.agreements, openReview])
+
   const handleUpload = async (file: File) => {
     setUploading(true)
     try {
       await api.upload(file, role.toLowerCase())
       toast(`Đã upload "${file.name}" — đang xử lý OCR…`, 'success')
-      await api.fetch()
+      await api.fetch(1)
     } catch (e) {
       toast(`Upload thất bại: ${e}`, 'error')
     } finally {
@@ -82,7 +102,7 @@ export default function App() {
     try {
       await api.approve(selected.id, role)
       toast('Đã phê duyệt hồ sơ', 'success')
-      await api.fetch()
+      await api.fetch(api.currentPage)
       const fresh = api.agreements.find(a => a.id === selected.id)
       if (fresh) setSelected(fresh)
     } catch (e) {
@@ -95,7 +115,7 @@ export default function App() {
     try {
       await api.reject(selected.id, note, role)
       toast('Đã từ chối hồ sơ', 'info')
-      await api.fetch()
+      await api.fetch(api.currentPage)
       const fresh = api.agreements.find(a => a.id === selected.id)
       if (fresh) setSelected(fresh)
     } catch (e) {
@@ -108,7 +128,7 @@ export default function App() {
     try {
       await api.activate(selected.id, role)
       toast('Hồ sơ đã kích hoạt và push sang hệ thống chính thức!', 'success')
-      await api.fetch()
+      await api.fetch(api.currentPage)
       const fresh = api.agreements.find(a => a.id === selected.id)
       if (fresh) setSelected(fresh)
     } catch (e) {
@@ -121,30 +141,67 @@ export default function App() {
     try {
       await api.updateData(selected.id, data, role)
       toast('Đã lưu nháp', 'success')
-      await api.fetch()
+      await api.fetch(api.currentPage)
     } catch (e) {
       toast(`Lưu thất bại: ${e}`, 'error')
     }
   }
+
+  const TABS = [
+    { key: 'agreements' as Tab, label: 'Danh sách hồ sơ', icon: List },
+    { key: 'storage' as Tab, label: 'Kho lưu trữ', icon: HardDrive },
+  ]
 
   return (
     <div className="min-h-screen bg-[#F7F9FC]">
       <Header role={role} onRoleChange={setRole} />
       <Stepper active={activeStep(api.agreements)} />
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        {/* Upload zone — only for Sales role */}
-        {role === 'Sales' && (
-          <UploadZone onUpload={handleUpload} uploading={uploading} />
+      <main className="max-w-7xl mx-auto px-6 py-6 space-y-5">
+        {/* Tab navigation */}
+        <div className="flex border-b border-gray-200 gap-0">
+          {TABS.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                tab === key
+                  ? 'border-[#0030CC] text-[#0030CC]'
+                  : 'border-transparent text-[#6B7280] hover:text-[#1A1F36]'
+              }`}
+            >
+              <Icon size={15} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab: Danh sách hồ sơ */}
+        {tab === 'agreements' && (
+          <>
+            {role === 'Sales' && (
+              <UploadZone onUpload={handleUpload} uploading={uploading} />
+            )}
+            <AgreementTable
+              agreements={api.agreements}
+              loading={api.loading}
+              total={api.total}
+              page={api.currentPage}
+              pages={api.pages}
+              onRefresh={() => api.fetch(api.currentPage)}
+              onPageChange={(p) => api.fetch(p)}
+              onReview={openReview}
+            />
+          </>
         )}
 
-        {/* Agreement queue */}
-        <AgreementTable
-          agreements={api.agreements}
-          loading={api.loading}
-          onRefresh={api.fetch}
-          onReview={openReview}
-        />
+        {/* Tab: Kho lưu trữ */}
+        {tab === 'storage' && (
+          <StorageTab
+            role={role}
+            onOpenAgreement={openReviewById}
+          />
+        )}
       </main>
 
       {/* Review modal */}

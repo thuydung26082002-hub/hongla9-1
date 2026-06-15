@@ -1,7 +1,20 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, String, Text, Float, Integer, DateTime, JSON, ForeignKey, Enum as SAEnum
+from sqlalchemy.types import TypeDecorator
 from sqlalchemy.orm import declarative_base, relationship
 import enum
+
+
+class TZDateTime(TypeDecorator):
+    """DateTime that always returns timezone-aware UTC datetimes (SQLite-safe)."""
+    impl = DateTime
+    cache_ok = True
+
+    def process_result_value(self, value, dialect):
+        if value is not None and value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
+
 
 Base = declarative_base()
 
@@ -31,10 +44,11 @@ class Agreement(Base):
     rejection_note = Column(Text, nullable=True)
     source_file_name = Column(String, nullable=True)
     source_drive_file_id = Column(String, nullable=True, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(TZDateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(TZDateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    s3_key = Column(String, nullable=True, index=True)
     approved_by = Column(String, nullable=True)
-    approved_at = Column(DateTime, nullable=True)
+    approved_at = Column(TZDateTime, nullable=True)
 
     audit_logs = relationship("AuditLog", back_populates="agreement", order_by="AuditLog.created_at")
 
@@ -51,6 +65,6 @@ class AuditLog(Base):
     new_value = Column(Text, nullable=True)
     ai_value = Column(Text, nullable=True)
     note = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(TZDateTime, default=lambda: datetime.now(timezone.utc))
 
     agreement = relationship("Agreement", back_populates="audit_logs")

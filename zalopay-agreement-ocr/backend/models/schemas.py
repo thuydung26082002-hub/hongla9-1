@@ -16,6 +16,7 @@ class AgreementOut(BaseModel):
     needs_review: int
     rejection_note: Optional[str]
     source_file_name: Optional[str]
+    s3_key: Optional[str]
     created_at: datetime
     updated_at: datetime
     approved_by: Optional[str]
@@ -23,6 +24,24 @@ class AgreementOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PaginatedAgreements(BaseModel):
+    items: list[AgreementOut]
+    total: int
+    page: int
+    size: int
+    pages: int
+
+
+class StorageFileOut(BaseModel):
+    key: str
+    name: str
+    size: int
+    last_modified: str
+    has_agreement: bool
+    agreement_id: Optional[str] = None
+    agreement_status: Optional[str] = None
 
 
 class AuditLogOut(BaseModel):

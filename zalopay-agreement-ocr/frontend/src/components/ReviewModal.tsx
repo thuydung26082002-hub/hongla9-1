@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { X, AlertTriangle } from 'lucide-react'
 import type { Agreement, ExtractedData, AuditLog } from '../types/agreement'
 import AiField from './AiField'
-import FeeTable from './FeeTable'
+import FeeWorkbench from './FeeWorkbench'
+import ReconcileTab from './ReconcileTab'
 import StatusChip from './StatusChip'
 
 interface Props {
@@ -17,22 +18,23 @@ interface Props {
 }
 
 export default function ReviewModal({ agreement, onClose, onApprove, onReject, onActivate, onSave, auditLogs, role }: Props) {
-  const [tab, setTab] = useState<'partner' | 'payment' | 'fee' | 'audit'>('partner')
+  const [tab, setTab] = useState<'partner' | 'payment' | 'fee' | 'doi_soat' | 'audit'>('partner')
   const [data, setData] = useState<ExtractedData>(agreement.reviewed_data ?? agreement.ai_extracted_data ?? {} as ExtractedData)
   const [rejectNote, setRejectNote] = useState('')
   const [showRejectBox, setShowRejectBox] = useState(false)
   const [confirm, setConfirm] = useState<{ action: string; label: string; onConfirm: () => void } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [feeConfirmed, setFeeConfirmed] = useState(false)
 
   const conf = agreement.ai_extracted_data?._meta?.field_confidence ?? {}
   const ocrError = agreement.ai_extracted_data?._meta?.ocr_error
 
   const patchPartner = (key: string, v: string) =>
-    setData(d => ({ ...d, partner: { ...d.partner, [key]: v } }))
+    setData((d: ExtractedData) => ({ ...d, partner: { ...d.partner, [key]: v } }))
   const patchPayment = (key: string, v: string) =>
-    setData(d => ({ ...d, payment: { ...d.payment, [key]: v } }))
+    setData((d: ExtractedData) => ({ ...d, payment: { ...d.payment, [key]: v } }))
   const patchMeta = (key: string, v: string) =>
-    setData(d => ({ ...d, fee: { ...d.fee, metadata: { ...d.fee?.metadata, [key]: v } } }))
+    setData((d: ExtractedData) => ({ ...d, fee: { ...d.fee, metadata: { ...d.fee?.metadata, [key]: v } } }))
 
   const handleSave = async () => {
     setSaving(true)
@@ -85,6 +87,7 @@ export default function ReviewModal({ agreement, onClose, onApprove, onReject, o
             { key: 'partner', label: 'Đối tác' },
             { key: 'payment', label: 'Thanh toán' },
             { key: 'fee', label: 'Biểu phí' },
+            { key: 'doi_soat', label: 'Đối soát Excel' },
             { key: 'audit', label: `Lịch sử (${auditLogs.length})` },
           ].map(t => (
             <button
@@ -104,7 +107,7 @@ export default function ReviewModal({ agreement, onClose, onApprove, onReject, o
           {/* Tab 1: Partner */}
           {tab === 'partner' && (
             <div className="grid grid-cols-2 gap-3">
-              <AiField label="Tên đối tác / Merchant" value={p.ten_doi_tac} confidence={conf['partner.ten_doi_tac']} onChange={v => patchPartner('ten_doi_tac', v)} />
+              <AiField label="Tên Merchant (công ty ký HĐ với Zion)" value={p.ten_doi_tac} confidence={conf['partner.ten_doi_tac']} onChange={v => patchPartner('ten_doi_tac', v)} />
               <AiField label="Mã số thuế" value={p.ma_so_thue} confidence={conf['partner.ma_so_thue']} onChange={v => patchPartner('ma_so_thue', v)} />
               <AiField label="Địa chỉ xuất hóa đơn" value={p.dia_chi_xuat_hoa_don} confidence={conf['partner.dia_chi_xuat_hoa_don']} onChange={v => patchPartner('dia_chi_xuat_hoa_don', v)} />
               <AiField label="Mã Agreement" value={p.ma_agreement} confidence={conf['partner.ma_agreement']} onChange={v => patchPartner('ma_agreement', v)} />
@@ -124,11 +127,11 @@ export default function ReviewModal({ agreement, onClose, onApprove, onReject, o
             </div>
           )}
 
-          {/* Tab 3: Fee schedule */}
+          {/* Tab 3: Fee workbench */}
           {tab === 'fee' && (
-            <div>
+            <div className="space-y-5">
               {/* Metadata */}
-              <div className="grid grid-cols-3 gap-3 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-100">
+              <div className="grid grid-cols-3 gap-3 p-4 bg-blue-50 rounded-lg border border-blue-100">
                 <AiField label="Thuế VAT" value={meta.thue_vat} onChange={v => patchMeta('thue_vat', v)} />
                 <AiField label="Loại công thức" value={meta.loai_cong_thuc} onChange={v => patchMeta('loai_cong_thuc', v)} />
                 <AiField label="Thời gian hoàn tiền tối đa (ngày)" value={meta.thoi_gian_hoan_tien_toi_da_ngay} onChange={v => patchMeta('thoi_gian_hoan_tien_toi_da_ngay', v)} />
@@ -137,29 +140,38 @@ export default function ReviewModal({ agreement, onClose, onApprove, onReject, o
                 <AiField label="Mã Agreement" value={meta.ma_agreement} onChange={v => patchMeta('ma_agreement', v)} />
               </div>
 
-              {data.fee?.phi_giao_dich && (
-                <section className="mb-6">
-                  <h3 className="font-bold text-[#1A1F36] mb-3 flex items-center gap-2">
-                    <span className="w-2 h-4 bg-[#0030CC] rounded-sm inline-block" />
-                    Phí giao dịch
-                  </h3>
-                  <FeeTable data={data.fee.phi_giao_dich} showRefund={false} />
-                </section>
-              )}
+              {/* Drag-and-drop fee workbench */}
+              <FeeWorkbench
+                fee={data.fee ?? { cells: [] }}
+                onChange={updated => {
+                  setData((d: ExtractedData) => ({ ...d, fee: updated }))
+                  setFeeConfirmed(false)
+                }}
+              />
 
-              {data.fee?.phi_hoan_tien && (
-                <section>
-                  <h3 className="font-bold text-[#1A1F36] mb-3 flex items-center gap-2">
-                    <span className="w-2 h-4 bg-[#00CC66] rounded-sm inline-block" />
-                    Phí hoàn tiền
-                  </h3>
-                  <FeeTable data={data.fee.phi_hoan_tien} showRefund={true} />
-                </section>
-              )}
+              {/* Confirm fee button */}
+              <div className="flex justify-end pt-1">
+                <button
+                  onClick={async () => { await handleSave(); setFeeConfirmed(true) }}
+                  disabled={saving}
+                  className={`text-sm font-semibold px-5 py-2 rounded-lg transition-colors ${
+                    feeConfirmed
+                      ? 'bg-green-100 text-green-700 border border-green-300'
+                      : 'bg-[#0030CC] text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {saving ? 'Đang lưu…' : feeConfirmed ? '✓ Đã xác nhận biểu phí' : 'Xác nhận biểu phí'}
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Tab 4: Audit log */}
+          {/* Tab 4: Đối soát Excel — always mounted to preserve state across tab switches */}
+          <div className={tab !== 'doi_soat' ? 'hidden' : ''}>
+            <ReconcileTab agreementId={agreement.id} />
+          </div>
+
+          {/* Tab 5: Audit log */}
           {tab === 'audit' && (
             <div className="space-y-2">
               {auditLogs.length === 0 && <p className="text-[#6B7280] text-sm">Chưa có lịch sử thao tác.</p>}

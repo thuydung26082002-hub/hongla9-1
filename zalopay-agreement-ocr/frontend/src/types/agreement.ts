@@ -5,18 +5,31 @@ export type AgreementStatus =
   | 'Từ chối'
   | 'Đã kích hoạt'
 
-export interface FeeChannel {
-  so_tien_vnd?: number | null
-  phan_tram?: number | null
-  min?: number | null
-  max?: number | null
-  hoan_phi_co_dinh?: string | null
-  hoan_phi_phan_tram?: string | null
+export interface FeeCell {
+  label: string
+  raw: string
+  confidence: number
 }
 
-export interface FeeGroup {
-  vi_zalopay: Record<string, FeeChannel>
-  cong_zalopay: Record<string, FeeChannel>
+export interface FeeExtracted {
+  source_section?: string | null
+  vat_included?: boolean | null
+  cells: FeeCell[]
+  notes?: string[]
+  assignments?: Record<string, FeeCell>
+  metadata?: {
+    stt?: number | null
+    ma_agreement?: string | null
+    ten_agreement?: string | null
+    trang_thai_agreement?: string
+    ten_merchant?: string | null
+    app_payment?: string | null
+    thoi_gian_hoan_tien_toi_da_ngay?: number | null
+    ngay_bat_dau_tinh_phi?: string | null
+    ngay_duyet_agreement?: string | null
+    thue_vat?: string | null
+    loai_cong_thuc?: string | null
+  }
 }
 
 export interface ExtractedData {
@@ -35,24 +48,7 @@ export interface ExtractedData {
     ngan_hang_thu_huong?: string | null
     chi_nhanh?: string | null
   }
-  fee: {
-    metadata: {
-      stt?: number | null
-      ma_agreement?: string | null
-      ten_agreement?: string | null
-      trang_thai_agreement?: string
-      ten_merchant?: string | null
-      app_payment?: string | null
-      thoi_gian_hoan_tien_toi_da_ngay?: number | null
-      ngay_bat_dau_tinh_phi?: string | null
-      ngay_duyet_agreement?: string | null
-      thue_vat?: string | null
-      loai_cong_thuc?: string | null
-    }
-    phi_giao_dich: FeeGroup
-    phi_hoan_tien: FeeGroup
-    cong_thuc_dac_biet?: Record<string, unknown>
-  }
+  fee: FeeExtracted
   _meta?: {
     field_confidence?: Record<string, number>
     needs_review?: boolean
@@ -72,10 +68,29 @@ export interface Agreement {
   needs_review: number
   rejection_note?: string | null
   source_file_name?: string | null
+  s3_key?: string | null
   created_at: string
   updated_at: string
   approved_by?: string | null
   approved_at?: string | null
+}
+
+export interface PaginatedAgreements {
+  items: Agreement[]
+  total: number
+  page: number
+  size: number
+  pages: number
+}
+
+export interface StorageFile {
+  key: string
+  name: string
+  size: number
+  last_modified: string
+  has_agreement: boolean
+  agreement_id?: string | null
+  agreement_status?: string | null
 }
 
 export interface AuditLog {
