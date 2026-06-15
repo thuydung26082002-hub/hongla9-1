@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZaloPay · Đối chiếu PMR / AVR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#F5F7FA;--bg2:#EEF1F6;--s:#FFFFFF;--s2:#F8F9FC;--s3:#EEF1F6;
+  --bdr:#DDE3EE;--bdr2:#C7D1E8;
+  --blue:#0068FF;--blue-d:#0051CC;--blue-l:rgba(0,104,255,.1);--blue-xl:rgba(0,104,255,.04);
+  --teal:#00A88A;--teal-l:rgba(0,168,138,.1);
+  --green:#00875A;--green-l:rgba(0,135,90,.08);
+  --red:#D93025;--red-l:rgba(217,48,37,.08);
+  --amber:#E07B00;--amber-l:rgba(224,123,0,.08);
+  --text:#0D1B2A;--text2:#4A6080;--muted:#8FA8CC;
+  --mono:'JetBrains Mono','Courier New',monospace;
+  --r:12px;--r2:8px;--r3:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#F0F2F8}
+::-webkit-scrollbar-thumb{background:#C7D1E8;border-radius:99px}
+::-webkit-scrollbar-thumb:hover{background:var(--blue)}
+
+header{
+  background:#FFFFFF;border-bottom:2px solid var(--blue);padding:0 28px;height:60px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,104,255,.1)
+}
+.hd-left{display:flex;align-items:center;gap:14px}
+.logo-z{
+  width:38px;height:38px;border-radius:10px;flex-shrink:0;
+  background:linear-gradient(135deg,#00C896,#00A876);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:20px;color:#fff;box-shadow:0 2px 10px rgba(0,168,138,.3)
+}
+.hd-title{font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.3px}
+.hd-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.chip-diamond{
+  display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:99px;
+  background:linear-gradient(135deg,rgba(0,168,138,.08),rgba(0,104,255,.08));
+  border:1px solid rgba(0,104,255,.25);font-size:11px;font-weight:700;color:var(--teal)
+}
+
+main{max-width:1240px;margin:0 auto;padding:28px 16px}
+
+.sec-hd{display:flex;align-items:center;gap:12px;margin:28px 0 16px}
+.sec-hd .line{flex:1;height:1px;background:var(--bdr)}
+.sec-hd .label{
+  color:var(--text2);display:flex;align-items:center;gap:8px;
+  font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;white-space:nowrap
+}
+.sec-hd .label .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot-blue{background:var(--blue);box-shadow:0 0 7px var(--blue)}
+.dot-teal{background:var(--teal);box-shadow:0 0 7px var(--teal)}
+
+.card{background:var(--s);border:1px solid var(--bdr);box-shadow:0 1px 4px rgba(0,0,0,.04);border-radius:var(--r);margin-bottom:14px;overflow:hidden}
+.ch{padding:13px 18px;border-bottom:1px solid var(--bdr);background:var(--s2);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ch h2{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.cb{padding:16px 18px}
+
+.dz{
+  border:1.5px dashed var(--bdr2);border-radius:var(--r2);padding:16px;
+  cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .2s
+}
+.dz:hover,.dz.drag{border-color:var(--blue);background:rgba(0,104,255,.03)}
+.dz.ok{border-style:solid;border-color:var(--teal);background:var(--teal-l)}
+.dz-ico{
+  width:44px;height:44px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--s3);border:1px solid var(--bdr2);font-size:20px
+}
+.dz.ok .dz-ico{background:var(--teal-l);border-color:rgba(0,212,170,.4)}
+.dz-info h3{font-size:13px;font-weight:700;margin-bottom:3px}
+.dz-info p{font-size:11.5px;color:var(--muted);line-height:1.5}
+.dz-fname{font-size:11.5px;font-weight:600;color:var(--teal);margin-top:4px;word-break:break-all}
+input[type=file]{display:none}
+
+.slot-list{display:flex;flex-direction:column;gap:8px}
+.slot-row{display:grid;grid-template-columns:32px 1fr 36px;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--bdr);border-radius:var(--r2);padding:10px 12px}
+.slot-num{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+.sn-blue{background:var(--blue-l);border:1px solid rgba(0,104,255,.3);color:var(--blue)}
+.slot-remove{width:32px;height:32px;background:none;border:1px solid var(--bdr2);border-radius:var(--r3);cursor:pointer;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all .2s}
+.slot-remove:hover{border-color:var(--red);color:var(--red);background:var(--red-l)}
+
+.add-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:11px;margin-top:8px;border-radius:var(--r2);
+  font-size:13px;font-weight:700;cursor:pointer;transition:all .2s
+}
+.add-blue{border:1.5px dashed rgba(0,104,255,.5);background:var(--blue-xl);color:var(--blue)}
+.add-blue:hover{border-color:var(--blue);background:var(--blue-l)}
+
+.cfg{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+.cfg-f label{font-size:11px;color:var(--text2);display:block;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.cfg-f input{padding:8px 11px;border:1px solid var(--bdr2);border-radius:var(--r2);font-size:13px;background:var(--s3);color:var(--text);outline:none;transition:border-color .2s}
+.cfg-f input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,104,255,.15)}
+.cfg-note{flex:1;min-width:220px;font-size:11.5px;color:var(--text2);background:rgba(0,104,255,.04);border:1px solid rgba(0,104,255,.15);border-radius:var(--r2);padding:11px 14px;line-height:1.7}
+.cfg-note b{color:var(--blue)}
+
+.run-btn{
+  width:100%;padding:14px;margin:18px 0;border:none;border-radius:var(--r);
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  font-size:14px;font-weight:800;letter-spacing:.2px;cursor:pointer;
+  background:linear-gradient(135deg,#0060EE,#0080FF);
+  color:#fff;box-shadow:0 4px 22px rgba(0,104,255,.4);transition:all .2s
+}
+.run-btn:hover:not(:disabled){box-shadow:0 6px 28px rgba(0,104,255,.55);transform:translateY(-1px)}
+.run-btn:disabled{background:var(--s3);color:var(--muted);cursor:not-allowed;box-shadow:none;transform:none}
+
+.alert-box{display:none;padding:11px 15px;border-radius:var(--r2);margin:0 0 14px;font-size:12.5px;line-height:1.6;border-left:3px solid}
+.alert-err{background:var(--red-l);color:var(--red);border-color:var(--red)}
+.alert-info{background:var(--blue-l);color:var(--blue);border-color:var(--blue)}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--s);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.st-blue::before{background:linear-gradient(90deg,var(--blue),#60AFFF)}
+.st-green::before{background:linear-gradient(90deg,var(--green),#00FF9D)}
+.st-red::before{background:linear-gradient(90deg,var(--red),#FF8A95)}
+.st-amber::before{background:linear-gradient(90deg,var(--amber),#FFD54F)}
+.stat .lbl{font-size:10.5px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px}
+.stat .val{font-size:26px;font-weight:900}
+.st-green .val{color:var(--green)}
+.st-red .val{color:var(--red)}
+.st-amber .val{color:var(--amber)}
+
+.fbar{display:flex;gap:8px;padding:11px 14px;border-bottom:1px solid var(--bdr);background:var(--s2);flex-wrap:wrap;align-items:center}
+.fbar select,.fbar input{padding:6px 10px;border:1px solid var(--bdr2);border-radius:var(--r3);font-size:12.5px;background:var(--s3);color:var(--text);outline:none}
+.fbar input{min-width:180px}
+.fbar-r{margin-left:auto;display:flex;gap:6px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--r3);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;border:1px solid var(--bdr2);background:var(--s3);color:var(--text2)}
+.btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-l)}
+.btn-danger{background:var(--red-l);color:var(--red);border-color:rgba(217,48,37,.3)}
+.btn-danger:hover{background:rgba(217,48,37,.2)}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{padding:9px 12px;text-align:left;font-size:10.5px;font-weight:700;color:#6B7A99;background:#F8F9FC;border-bottom:1px solid var(--bdr);white-space:nowrap;text-transform:uppercase;letter-spacing:.5px}
+th.r{text-align:right}
+td{padding:8px 12px;border-bottom:1px solid var(--bdr);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(0,104,255,.03)}
+.num{text-align:right;font-family:var(--mono);font-size:12px}
+.app-id{font-family:var(--mono);font-weight:800;color:var(--blue);font-size:12px}
+.tag{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;padding:3px 9px;border-radius:99px;font-weight:700;white-space:nowrap}
+.tag-ok{background:var(--green-l);color:var(--green)}
+.tag-err{background:var(--red-l);color:var(--red)}
+.tag-warn{background:var(--amber-l);color:var(--amber)}
+.chip{display:inline-block;font-size:10px;padding:2px 7px;border-radius:4px;background:var(--blue-l);color:var(--blue);font-weight:700;font-family:var(--mono);border:1px solid rgba(0,104,255,.25);margin:1px 2px 1px 0}
+.diff-hi{color:var(--red);font-weight:800}
+.diff-lo{color:var(--teal);font-weight:800}
+.empty{text-align:center;padding:44px;color:var(--muted);font-size:13px}
+.badge{font-size:11px;padding:3px 10px;border-radius:99px;font-weight:700}
+.b-blue{background:var(--blue-l);color:var(--blue);border:1px solid rgba(0,104,255,.25)}
+.b-ok{background:var(--green-l);color:var(--green)}
+.b-err{background:var(--red-l);color:var(--red)}
+.b-teal{background:var(--teal-l);color:var(--teal)}
+.b-muted{background:var(--s3);color:var(--muted);border:1px solid var(--bdr)}
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:640px){.upload-grid{grid-template-columns:1fr}}
+.debug-box{font-size:11px;font-family:var(--mono);color:var(--text2);background:var(--s2);border:1px solid var(--bdr);border-radius:var(--r2);padding:12px 16px;white-space:pre-wrap;margin-bottom:14px;display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd-left">
+    <div class="logo-z">Z</div>
+    <div>
+      <div class="hd-title">ZaloPay Reconciliation</div>
+      <div class="hd-sub">PMR · AVR × System — DP-TPE</div>
+    </div>
+  </div>
+  <div class="chip-diamond">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    Hạng Kim Cương
+  </div>
+</header>
+
+<main>
+
+<div class="sec-hd">
+  <div class="label"><span class="dot dot-blue"></span>Đối chiếu PMR × System (DP-TPE)</div>
+  <div class="line"></div>
+</div>
+
+<div class="upload-grid">
+  <!-- System file -->
+  <div class="card">
+    <div class="ch">
+      <h2><span class="dot-blue" style="width:7px;height:7px;border-radius:50%;box-shadow:0 0 7px var(--blue)"></span>File System (Input)</h2>
+      <span class="badge b-muted" id="sys-badge">Chưa upload</span>
+    </div>
+    <div class="cb">
+      <label class="dz" id="dz-sys" for="f-sys">
+        <div class="dz-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7CC8FF" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 21V9"/></svg>
+        </div>
+        <div class="dz-info">
+          <h3>File Input .xlsx (1 file)</h3>
+          <p>Cột Loại · Nguồn · app_id · Đối soát giao dịch</p>
+          <div class="dz-fname" id="fn-sys">Kéo thả hoặc click để chọn</div>
+        </div>
+      </label>
+      <input type="file" id="f-sys" accept=".xlsx,.xls,.csv">
+    </div>
+  </div>
+
+  <!-- AVR file -->
+  <div class="card">
+    <div class="ch">
+      <h2><span class="dot-teal" style="width:7px;height:7px;border-radius:50%;box-shadow:0 0 7px var(--teal)"></span>File AVR (Tạm ứng) <span style="font-size:11px;color:var(--muted);font-weight:400">(tùy chọn)</span></h2>
+      <span class="badge b-muted" id="avr-badge">Chưa upload</span>
+    </div>
+    <div class="cb">
+      <label class="dz" id="dz-avr" for="f-avr">
+        <div class="dz-ico">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00D4AA" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div class="dz-info">
+          <h3>File AVR .xlsx (1 file)</h3>
+          <p>Cột D: App ID · Cột Q: Tổng tạm ứng</p>
+          <div class="dz-fname" id="fn-avr">Kéo thả hoặc click để chọn</div>
+        </div>
+      </label>
+      <input type="file" id="f-avr" accept=".xlsx,.xls,.csv">
+    </div>
+  </div>
+</div>
+
+<!-- PMR multi slots -->
+<div class="card">
+  <div class="ch">
+    <h2><span class="dot-blue" style="width:7px;height:7px;border-radius:50%;box-shadow:0 0 7px var(--blue)"></span>File PMR</h2>
+    <span class="badge b-blue" id="pmr-badge">0 file</span>
+  </div>
+  <div class="cb">
+    <div class="slot-list" id="sl-pmr"></div>
+    <button class="add-btn add-blue" onclick="addPmrSlot()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Thêm file PMR
+    </button>
+  </div>
+</div>
+
+<!-- Config -->
+<div class="card">
+  <div class="ch"><h2><span class="dot-blue" style="width:7px;height:7px;border-radius:50%;box-shadow:0 0 7px var(--blue)"></span>Cấu hình</h2></div>
+  <div class="cb">
+    <div class="cfg">
+      <div class="cfg-f"><label>Nguồn lọc</label><input id="c-nguon" value="DP-TPE" style="width:110px"></div>
+      <div class="cfg-f"><label>Cột AppID PMR</label><input id="c-appid" type="number" value="9" style="width:75px"></div>
+      <div class="cfg-f"><label>Cột AppID AVR</label><input id="a-appid" type="number" value="3" style="width:75px"></div>
+      <div class="cfg-f"><label>Cột TU AVR (Q)</label><input id="a-amt" type="number" value="16" style="width:75px"></div>
+      <div class="cfg-f"><label>Cột Z PMR</label><input id="a-colz" type="number" value="25" style="width:75px"></div>
+      <div class="cfg-f"><label>Cột AG PMR</label><input id="a-colag" type="number" value="32" style="width:75px"></div>
+      <div class="cfg-f"><label>Ngưỡng lệch (VND)</label><input id="c-tol" type="number" value="0" style="width:120px"></div>
+      <div class="cfg-f">
+        <label>&nbsp;</label>
+        <label style="display:flex;align-items:center;gap:6px;padding:8px 0;cursor:pointer;font-size:12px;color:var(--text2)">
+          <input type="checkbox" id="c-debug" style="width:auto"> Debug info
+        </label>
+      </div>
+      <div class="cfg-note">
+        <b>Rule 1 — PMR × System:</b> PMR Net (U+AB−W−AD) = System Net (cột "Đối soát giao dịch") theo AppID<br>
+        <b>Rule 2 — PMR × AVR:</b> PMR cột Z + AG = AVR cột Q theo AppID<br>
+        <b>Mã PMR:</b> cột T (index 19) · AppID = ký tự trước "_"
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="alert-box alert-err" id="alert-box"></div>
+
+<button class="run-btn" id="run-btn" disabled onclick="runAll()">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+  Chạy Đối chiếu
+</button>
+
+<!-- Results -->
+<div id="res-pmr" style="display:none">
+  <div class="sec-hd">
+    <div class="label"><span class="dot dot-blue"></span>Kết quả PMR × System</div>
+    <div class="line"></div>
+  </div>
+
+  <div class="stats">
+    <div class="stat st-blue"><div class="lbl">App trong PMR</div><div class="val" id="ps0">0</div></div>
+    <div class="stat st-green"><div class="lbl">Khớp</div><div class="val" id="ps1">0</div></div>
+    <div class="stat st-red"><div class="lbl">Chênh lệch</div><div class="val" id="ps2">0</div></div>
+    <div class="stat st-amber"><div class="lbl">Không tìm thấy</div><div class="val" id="ps3">0</div></div>
+  </div>
+
+  <div class="debug-box" id="debug-box"></div>
+
+  <div class="card">
+    <div class="ch">
+      <h2><span class="dot-blue" style="width:7px;height:7px;border-radius:50%;box-shadow:0 0 7px var(--blue)"></span>Chi tiết PMR</h2>
+      <span class="badge b-muted" id="pmr-diff-bdg">0 chênh lệch</span>
+    </div>
+    <div class="fbar">
+      <select id="pf-st" onchange="renderTable()">
+        <option value="all">Tất cả</option>
+        <option value="diff">✗ Lệch</option>
+        <option value="match">✓ Khớp</option>
+        <option value="nf">⚠ Không tìm thấy</option>
+      </select>
+      <select id="pf-pmr" onchange="renderTable()"><option value="all">Tất cả mã PMR</option></select>
+      <input id="pf-q" placeholder="Tìm AppID hoặc tên…" oninput="renderTable()">
+      <div class="fbar-r">
+        <button class="btn" onclick="xptPMR(false)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export
+        </button>
+        <button class="btn btn-danger" onclick="xptPMR(true)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Chỉ lệch
+        </button>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>AppID</th><th>Tên App</th><th>Mã PMR</th>
+        <th class="r">PMR Payment</th><th class="r">PMR Refund</th><th class="r">PMR Net</th>
+        <th class="r">Sys Payment</th><th class="r">Sys Refund</th><th class="r">Sys Net</th>
+        <th class="r">Lệch PMR×Sys</th><th>PMR×Sys</th>
+        <th class="r">AVR (Q)</th><th class="r">PMR Z+AG</th>
+        <th class="r">Lệch AVR×PMR</th><th>AVR×PMR</th>
+      </tr></thead>
+      <tbody id="pmr-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+</main>
+
+<script>
+const S = {
+  sys: null,
+  avr: null,
+  pmrSlots: [],
+  pmrCnt: 0,
+  rows: []
+};
+
+// ── Helpers ────────────────────────────────────────────────────────
+function N(v) {
+  if (v === null || v === undefined || isNaN(v)) return '–';
+  return Number(v).toLocaleString('vi-VN');
+}
+function pNum(s) {
+  if (s === null || s === undefined || s === '') return 0;
+  return parseFloat(String(s).replace(/[,\s]/g, '')) || 0;
+}
+function showAlert(msg, type = 'err') {
+  const b = document.getElementById('alert-box');
+  b.className = 'alert-box alert-' + type;
+  b.textContent = msg;
+  b.style.display = msg ? 'block' : 'none';
+}
+
+// ── Robust column helpers ──────────────────────────────────────────
+function findHeaderRow(data, keywords) {
+  for (let i = 0; i < Math.min(10, data.length); i++) {
+    const row = data[i].map(c => String(c).trim().toLowerCase());
+    if (keywords.some(kw => row.some(c => c.includes(kw.toLowerCase())))) return i;
+  }
+  return 0;
+}
+function findCol(header, aliases) {
+  for (const kw of aliases) {
+    const idx = header.findIndex(c => String(c).trim().toLowerCase().includes(kw.toLowerCase()));
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
+// ── File reader ────────────────────────────────────────────────────
+function readFile(f) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        res(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' }));
+      } catch(err) { rej(err); }
+    };
+    r.onerror = () => rej(new Error('Lỗi đọc file'));
+    r.readAsArrayBuffer(f);
+  });
+}
+function bindDZ(el, cb) {
+  el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag'); });
+  el.addEventListener('dragleave', () => el.classList.remove('drag'));
+  el.addEventListener('drop', async e => { e.preventDefault(); el.classList.remove('drag'); const f = e.dataTransfer.files[0]; if (f) await cb(f); });
+}
+function markLoaded(dzId, fnId, badgeId, fname) {
+  document.getElementById(dzId).classList.add('ok');
+  document.getElementById(fnId).textContent = '✓ ' + fname;
+  const b = document.getElementById(badgeId);
+  b.textContent = '✓ Đã upload'; b.className = 'badge b-teal';
+}
+
+// ── System file ────────────────────────────────────────────────────
+document.getElementById('f-sys').addEventListener('change', async function() { if (this.files[0]) await loadSys(this.files[0]); });
+bindDZ(document.getElementById('dz-sys'), loadSys);
+async function loadSys(f) {
+  S.sys = await readFile(f);
+  markLoaded('dz-sys', 'fn-sys', 'sys-badge', f.name);
+  checkReady();
+}
+
+// ── AVR file ───────────────────────────────────────────────────────
+document.getElementById('f-avr').addEventListener('change', async function() { if (this.files[0]) await loadAvr(this.files[0]); });
+bindDZ(document.getElementById('dz-avr'), loadAvr);
+async function loadAvr(f) {
+  S.avr = await readFile(f);
+  markLoaded('dz-avr', 'fn-avr', 'avr-badge', f.name);
+  checkReady();
+}
+
+// ── PMR multi slots ────────────────────────────────────────────────
+function addPmrSlot() {
+  const id = ++S.pmrCnt;
+  S.pmrSlots.push({ id, data: null, name: null });
+  renderPmrSlots();
+}
+function removePmrSlot(id) {
+  S.pmrSlots = S.pmrSlots.filter(s => s.id !== id);
+  renderPmrSlots(); checkReady();
+}
+async function loadPmrSlot(id, f) {
+  const sl = S.pmrSlots.find(s => s.id === id);
+  if (!sl) return;
+  sl.data = await readFile(f); sl.name = f.name;
+  renderPmrSlots(); checkReady();
+}
+function renderPmrSlots() {
+  const slots = S.pmrSlots;
+  document.getElementById('pmr-badge').textContent = slots.length + ' file';
+  document.getElementById('sl-pmr').innerHTML = slots.map((sl, i) => `
+    <div class="slot-row">
+      <div class="slot-num sn-blue">${i+1}</div>
+      <div>
+        <label class="dz ${sl.data ? 'ok' : ''}" id="dz-pmr-${sl.id}" for="f-pmr-${sl.id}" style="padding:10px 12px">
+          <div class="dz-ico" style="width:38px;height:38px;border-radius:8px">
+            ${sl.data
+              ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00D4AA" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>'
+              : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4A6080" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'}
+          </div>
+          <div class="dz-info">
+            <h3 style="font-size:12px">PMR #${i+1}</h3>
+            <p style="font-size:11px">Cột J: AppID · T: Mã PMR · U+AB: Payment · W+AD: Refund · Z: TU Bank · AG: TU Wallet</p>
+            <div class="dz-fname">${sl.name || 'Kéo thả hoặc click để chọn'}</div>
+          </div>
+        </label>
+        <input type="file" id="f-pmr-${sl.id}" accept=".xlsx,.xls,.csv"
+          onchange="loadPmrSlot(${sl.id}, this.files[0])">
+      </div>
+      <button class="slot-remove" onclick="removePmrSlot(${sl.id})">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  `).join('');
+  slots.forEach(sl => {
+    const dz = document.getElementById(`dz-pmr-${sl.id}`);
+    if (dz) bindDZ(dz, f => loadPmrSlot(sl.id, f));
+  });
+}
+
+function checkReady() {
+  document.getElementById('run-btn').disabled = !(S.sys && S.pmrSlots.some(s => s.data));
+}
+
+// ── Parse System (robust column detection) ─────────────────────────
+function parseSys(data, nguon, debugLines) {
+  const hdrIdx = findHeaderRow(data, ['loại', 'loai', 'nguồn', 'nguon', 'app_id']);
+  const hdr = data[hdrIdx].map(c => String(c).trim());
+  debugLines.push(`[System] Header row: ${hdrIdx}`);
+  debugLines.push(`[System] Cols: ${hdr.join(' | ')}`);
+
+  const iL = findCol(hdr, ['loại', 'loai', 'type']);
+  const iN = findCol(hdr, ['nguồn', 'nguon', 'source']);
+  const iA = findCol(hdr, ['app_id', 'appid', 'app id']);
+  const iT = findCol(hdr, ['tên app', 'ten app', 'name', 'merchant']);
+  const iM = findCol(hdr, ['đối soát giao dịch', 'doi soat giao dich', 'doi soat', 'amount', 'số tiền gd', 'so tien']);
+
+  debugLines.push(`[System] loại=${iL} nguồn=${iN} app_id=${iA} tên app=${iT} amount=${iM}`);
+
+  const missing = [];
+  if (iL < 0) missing.push('Loại');
+  if (iN < 0) missing.push('Nguồn');
+  if (iA < 0) missing.push('app_id');
+  if (iM < 0) missing.push('Đối soát giao dịch');
+  if (missing.length)
+    throw new Error('File System thiếu cột: ' + missing.join(', ') + '\nCột hiện có: ' + hdr.join(', '));
+
+  const m = {};
+  let cnt = 0;
+  for (let i = hdrIdx + 1; i < data.length; i++) {
+    const r = data[i];
+    if (String(r[iN]).trim() !== nguon) continue;
+    const id   = String(r[iA]).trim();
+    if (!id) continue;
+    const loai = String(r[iL]).trim().toUpperCase();
+    const amt  = pNum(r[iM]);
+    const ten  = String(r[iT] !== undefined ? r[iT] : '').trim();
+    if (!m[id]) m[id] = { ten: '', pay: 0, ref: 0 };
+    if (loai === 'PAYMENT') m[id].pay += amt;
+    else if (loai === 'REFUND') m[id].ref += amt;
+    if (ten && !m[id].ten) m[id].ten = ten;
+    cnt++;
+  }
+  debugLines.push(`[System] Rows matched nguồn="${nguon}": ${cnt}, unique app_id: ${Object.keys(m).length}`);
+  if (cnt === 0)
+    throw new Error(`Không tìm thấy dòng nào có Nguồn = "${nguon}".\nKiểm tra lại giá trị "Nguồn lọc" và tên cột Nguồn trong file.`);
+  return m;
+}
+
+// ── Parse AVR ──────────────────────────────────────────────────────
+function parseAVR(data, cAid, cAmt, debugLines) {
+  const hdrIdx = findHeaderRow(data, ['app', 'id', 'tạm ứng', 'tam ung', 'amount']);
+  debugLines.push(`[AVR] Header row: ${hdrIdx}, AppID col=${cAid}, Amt col=${cAmt}`);
+  const m = {};
+  for (let i = hdrIdx + 1; i < data.length; i++) {
+    const r = data[i];
+    const raw = String(r[cAid] || '').trim();
+    if (!raw) continue;
+    const id = raw.includes('_') ? raw.split('_')[0].trim() : raw;
+    if (!id || !/\d/.test(id)) continue;
+    const key = String(parseInt(id));
+    m[key] = (m[key] || 0) + pNum(r[cAmt]);
+  }
+  debugLines.push(`[AVR] Unique app_id: ${Object.keys(m).length}`);
+  return m;
+}
+
+// ── Parse PMR (multi-file) ─────────────────────────────────────────
+function parsePMR(slots, colAid, cZ, cAG, debugLines) {
+  const m = {}, allCodes = new Set();
+  for (const sl of slots) {
+    if (!sl.data) continue;
+    const rows = sl.data;
+    const hdrIdx = findHeaderRow(rows, ['appid', 'app_id', 'app id', 'payment', 'refund']);
+    debugLines.push(`[PMR:${sl.name}] Header row: ${hdrIdx}, AppID col=${colAid}`);
+    let cnt = 0;
+    for (let i = hdrIdx + 1; i < rows.length; i++) {
+      const r = rows[i];
+      const raw = String(r[colAid] || '').trim();
+      if (!raw) continue;
+      const id = raw.includes('_') ? raw.split('_')[0].trim() : raw;
+      if (!id || !/\d/.test(id)) continue;
+      const key = String(parseInt(id));
+      const ten  = String(r[10] || '').trim();
+      const code = String(r[19] || '').trim();
+      const U  =          pNum(r[20]);
+      const AB =          pNum(r[27]);
+      const W  = Math.abs(pNum(r[22]));
+      const AD = Math.abs(pNum(r[29]));
+      const Z  =          pNum(r[cZ]);
+      const AG =          pNum(r[cAG]);
+      if (!m[key]) m[key] = { ten: '', pay: 0, ref: 0, Z: 0, AG: 0, codes: new Set() };
+      m[key].pay += U + AB;
+      m[key].ref += W + AD;
+      m[key].Z   += Z;
+      m[key].AG  += AG;
+      if (ten && !m[key].ten) m[key].ten = ten;
+      if (code) { m[key].codes.add(code); allCodes.add(code); }
+      cnt++;
+    }
+    debugLines.push(`[PMR:${sl.name}] Parsed ${cnt} rows, unique app_id: ${Object.keys(m).length}`);
+  }
+  return { m, allCodes };
+}
+
+// ── Run ────────────────────────────────────────────────────────────
+function runAll() {
+  showAlert('');
+  const nguon = document.getElementById('c-nguon').value.trim();
+  const cAid  = parseInt(document.getElementById('c-appid').value) || 9;
+  const cAAid = parseInt(document.getElementById('a-appid').value) || 3;
+  const cAAmt = parseInt(document.getElementById('a-amt').value)   || 16;
+  const cZ    = parseInt(document.getElementById('a-colz').value)  || 25;
+  const cAG   = parseInt(document.getElementById('a-colag').value) || 32;
+  const tol   = parseFloat(document.getElementById('c-tol').value) || 0;
+  const dbg   = document.getElementById('c-debug').checked;
+  const dl    = [];
+
+  let sysMap;
+  try { sysMap = parseSys(S.sys, nguon, dl); } catch(e) { showAlert(e.message); showDebug(dbg ? dl.join('\n') : null); return; }
+
+  const hasAVR = S.avr !== null;
+  const avrMap = hasAVR ? parseAVR(S.avr, cAAid, cAAmt, dl) : {};
+
+  const { m: pmrMap, allCodes } = parsePMR(S.pmrSlots, cAid, cZ, cAG, dl);
+
+  S.rows = [];
+  for (const [id, p] of Object.entries(pmrMap)) {
+    const sys    = sysMap[id];
+    const pmrNet = p.pay - p.ref;
+    const sysNet = sys ? sys.pay - sys.ref : null;
+    const diffSys = sysNet !== null ? pmrNet - sysNet : null;
+    const stSys   = sysNet === null ? 'nf' : (Math.abs(diffSys) <= tol ? 'match' : 'diff');
+
+    const pmrZAG  = p.Z + p.AG;
+    const avrAmt  = hasAVR ? (avrMap[id] ?? null) : null;
+    const diffAVR = avrAmt !== null ? pmrZAG - avrAmt : null;
+    const stAVR   = !hasAVR ? null : (avrAmt === null ? 'nf' : (Math.abs(diffAVR) <= tol ? 'match' : 'diff'));
+
+    S.rows.push({
+      id, ten: p.ten || (sys ? sys.ten : ''),
+      pPay: p.pay, pRef: p.ref, pmrNet,
+      sPay: sys ? sys.pay : null, sRef: sys ? sys.ref : null, sysNet,
+      diffSys, stSys,
+      pmrZAG, avrAmt, diffAVR, stAVR,
+      codes: [...p.codes]
+    });
+  }
+
+  const tot = S.rows.length;
+  const ok  = S.rows.filter(r => r.stSys === 'match' && (r.stAVR === 'match' || r.stAVR === null)).length;
+  const err = S.rows.filter(r => r.stSys === 'diff'  || r.stAVR === 'diff').length;
+  const nf  = S.rows.filter(r => r.stSys === 'nf').length;
+
+  document.getElementById('ps0').textContent = tot;
+  document.getElementById('ps1').textContent = ok;
+  document.getElementById('ps2').textContent = err;
+  document.getElementById('ps3').textContent = nf;
+  const bdg = document.getElementById('pmr-diff-bdg');
+  bdg.textContent = err + ' chênh lệch'; bdg.className = 'badge ' + (err > 0 ? 'b-err' : 'b-ok');
+
+  // Populate mã PMR filter
+  const sel = document.getElementById('pf-pmr');
+  sel.innerHTML = '<option value="all">Tất cả mã PMR</option>';
+  [...allCodes].sort().forEach(c => {
+    const o = document.createElement('option'); o.value = c; o.textContent = c; sel.appendChild(o);
+  });
+
+  dl.push(`[Result] total=${tot} ok=${ok} diff=${err} notfound=${nf}`);
+  showDebug(dbg ? dl.join('\n') : null);
+  document.getElementById('res-pmr').style.display = 'block';
+  renderTable();
+}
+
+function showDebug(text) {
+  const b = document.getElementById('debug-box');
+  if (text) { b.textContent = text; b.style.display = 'block'; }
+  else { b.style.display = 'none'; }
+}
+
+// ── Render table ───────────────────────────────────────────────────
+function renderTable() {
+  const fs = document.getElementById('pf-st').value;
+  const fp = document.getElementById('pf-pmr').value;
+  const q  = document.getElementById('pf-q').value.toLowerCase();
+
+  const rows = S.rows.filter(r => {
+    if (fs === 'diff'  && r.stSys !== 'diff'  && r.stAVR !== 'diff')  return false;
+    if (fs === 'match' && !(r.stSys === 'match' && (r.stAVR === 'match' || r.stAVR === null))) return false;
+    if (fs === 'nf'    && r.stSys !== 'nf')  return false;
+    if (fp !== 'all'   && !r.codes.includes(fp)) return false;
+    if (q && !r.id.toLowerCase().includes(q) && !r.ten.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  const tb = document.getElementById('pmr-tbody');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="15" class="empty">Không có dữ liệu</td></tr>'; return; }
+
+  const tag = s => {
+    if (!s) return '<span style="color:var(--muted);font-size:11px">–</span>';
+    return s === 'match' ? '<span class="tag tag-ok">✓ Khớp</span>'
+         : s === 'diff'  ? '<span class="tag tag-err">✗ Lệch</span>'
+         : '<span class="tag tag-warn">⚠ N/A</span>';
+  };
+  const dH = d => d === null ? '–'
+    : d === 0 ? '<span style="color:var(--muted)">0</span>'
+    : `<span class="${d > 0 ? 'diff-hi' : 'diff-lo'}">${d > 0 ? '+' : ''}${N(d)}</span>`;
+
+  tb.innerHTML = rows.map(r => `<tr>
+    <td class="app-id">${r.id}</td>
+    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.ten}">${r.ten || '–'}</td>
+    <td>${r.codes.map(c => '<span class="chip">' + c + '</span>').join('') || '–'}</td>
+    <td class="num">${N(r.pPay)}</td>
+    <td class="num">${N(r.pRef)}</td>
+    <td class="num" style="font-weight:700">${N(r.pmrNet)}</td>
+    <td class="num">${r.sPay !== null ? N(r.sPay) : '–'}</td>
+    <td class="num">${r.sRef !== null ? N(r.sRef) : '–'}</td>
+    <td class="num" style="font-weight:700">${r.sysNet !== null ? N(r.sysNet) : '–'}</td>
+    <td class="num">${dH(r.diffSys)}</td>
+    <td>${tag(r.stSys)}</td>
+    <td class="num" style="font-weight:700;color:var(--teal)">${N(r.pmrZAG)}</td>
+    <td class="num" style="color:var(--teal)">${r.avrAmt !== null ? N(r.avrAmt) : '–'}</td>
+    <td class="num">${dH(r.diffAVR)}</td>
+    <td>${tag(r.stAVR)}</td>
+  </tr>`).join('');
+}
+
+// ── Export CSV ─────────────────────────────────────────────────────
+function xptPMR(diffOnly) {
+  const fs = document.getElementById('pf-st').value;
+  const fp = document.getElementById('pf-pmr').value;
+  const q  = document.getElementById('pf-q').value.toLowerCase();
+  const SL = { match: 'Khớp', diff: 'Lệch', nf: 'Không tìm thấy' };
+
+  const rows = S.rows.filter(r => {
+    if (diffOnly && r.stSys !== 'diff' && r.stAVR !== 'diff') return false;
+    if (!diffOnly) {
+      if (fs === 'diff'  && r.stSys !== 'diff'  && r.stAVR !== 'diff')  return false;
+      if (fs === 'match' && !(r.stSys === 'match' && (r.stAVR === 'match' || r.stAVR === null))) return false;
+      if (fs === 'nf'    && r.stSys !== 'nf') return false;
+      if (fp !== 'all'   && !r.codes.includes(fp)) return false;
+      if (q && !r.id.toLowerCase().includes(q) && !r.ten.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+
+  const hdr = 'AppID,Tên App,Mã PMR,PMR Payment,PMR Refund,PMR Net,Sys Payment,Sys Refund,Sys Net,Lệch PMR×Sys,TT PMR×Sys,PMR Z+AG,AVR(Q),Lệch AVR×PMR,TT AVR×PMR';
+  const body = rows.map(r => [
+    r.id, `"${r.ten}"`, `"${r.codes.join('; ')}"`,
+    r.pPay, r.pRef, r.pmrNet,
+    r.sPay ?? '', r.sRef ?? '', r.sysNet ?? '',
+    r.diffSys ?? '', SL[r.stSys] ?? '',
+    r.pmrZAG, r.avrAmt ?? '',
+    r.diffAVR ?? '', SL[r.stAVR] ?? ''
+  ].join(',')).join('\n');
+
+  const blob = new Blob(['﻿' + hdr + '\n' + body], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (diffOnly ? 'chenh_lech' : 'doi_chieu') + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+}
+
+// Init
+addPmrSlot();
+</script>
+</body>
+</html>
