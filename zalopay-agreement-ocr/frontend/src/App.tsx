@@ -25,8 +25,8 @@ function activeStep(agreements: Agreement[]): number {
   return 1
 }
 
-// Default filter per role: Kế toán never shows "Từ chối"
-function defaultFilter(role: Role): string | null {
+// Default filter is always "Chờ duyệt" (Kế toán never shows "Từ chối")
+function defaultFilter(_role: Role): string | null {
   return 'Chờ duyệt'
 }
 

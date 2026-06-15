@@ -1,5 +1,5 @@
 import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
-import type { Agreement, AgreementStatus } from '../types/agreement'
+import type { Agreement } from '../types/agreement'
 import StatusChip from './StatusChip'
 
 type Role = 'Sales' | 'Kế toán'
