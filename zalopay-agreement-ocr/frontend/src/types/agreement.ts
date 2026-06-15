@@ -68,7 +68,8 @@ export interface Agreement {
   needs_review: number
   rejection_note?: string | null
   source_file_name?: string | null
-  s3_key?: string | null
+  source_drive_file_id?: string | null
+  drive_web_link?: string | null
   created_at: string
   updated_at: string
   approved_by?: string | null
@@ -84,10 +85,11 @@ export interface PaginatedAgreements {
 }
 
 export interface StorageFile {
-  key: string
+  key: string          // Drive file ID
   name: string
   size: number
   last_modified: string
+  web_link?: string | null
   has_agreement: boolean
   agreement_id?: string | null
   agreement_status?: string | null

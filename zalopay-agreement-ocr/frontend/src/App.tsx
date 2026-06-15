@@ -11,7 +11,7 @@ import ToastContainer, { type ToastMsg } from './components/Toast'
 import { List, HardDrive } from 'lucide-react'
 
 type Role = 'Sales' | 'Kế toán'
-type Tab = 'agreements' | 'storage'
+type Tab  = 'agreements' | 'storage'
 
 let toastId = 0
 
@@ -25,13 +25,19 @@ function activeStep(agreements: Agreement[]): number {
   return 1
 }
 
+// Default filter per role: Kế toán never shows "Từ chối"
+function defaultFilter(role: Role): string | null {
+  return 'Chờ duyệt'
+}
+
 export default function App() {
-  const [role, setRole] = useState<Role>('Kế toán')
-  const [tab, setTab] = useState<Tab>('agreements')
-  const [selected, setSelected] = useState<Agreement | null>(null)
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
-  const [toasts, setToasts] = useState<ToastMsg[]>([])
-  const [uploading, setUploading] = useState(false)
+  const [role, setRole]               = useState<Role>('Kế toán')
+  const [tab, setTab]                 = useState<Tab>('agreements')
+  const [selected, setSelected]       = useState<Agreement | null>(null)
+  const [auditLogs, setAuditLogs]     = useState<AuditLog[]>([])
+  const [toasts, setToasts]           = useState<ToastMsg[]>([])
+  const [uploading, setUploading]     = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string | null>('Chờ duyệt')
   const prevPendingCount = useRef(0)
 
   const api = useAgreements()
@@ -47,19 +53,37 @@ export default function App() {
 
   // Initial load + polling
   useEffect(() => {
-    api.fetch(1)
-    const interval = setInterval(() => api.fetch(api.currentPage), 15000)
+    api.fetch(1, 10, statusFilter ?? undefined)
+    api.fetchStatusCounts()
+    const interval = setInterval(() => {
+      api.fetch(api.currentPage, 10, statusFilter ?? undefined)
+      api.fetchStatusCounts()
+    }, 15000)
     return () => clearInterval(interval)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Reset filter to "Chờ duyệt" when role changes (Kế toán can't see Từ chối)
+  const handleRoleChange = (newRole: Role) => {
+    setRole(newRole)
+    const newFilter = defaultFilter(newRole)
+    setStatusFilter(newFilter)
+    api.fetch(1, 10, newFilter ?? undefined)
+    api.fetchStatusCounts()
+  }
+
+  const handleFilterChange = (status: string | null) => {
+    setStatusFilter(status)
+    api.fetch(1, 10, status ?? undefined)
+  }
+
   // Notify kế toán when new pending agreements appear
   useEffect(() => {
-    const pending = api.agreements.filter(a => a.status === 'Chờ duyệt').length
-    if (role === 'Kế toán' && pending > prevPendingCount.current) {
+    const pending = api.statusCounts['Chờ duyệt'] ?? 0
+    if (role === 'Kế toán' && pending > prevPendingCount.current && prevPendingCount.current > 0) {
       toast(`Có ${pending - prevPendingCount.current} hồ sơ mới đang Chờ duyệt`, 'info')
     }
     prevPendingCount.current = pending
-  }, [api.agreements, role, toast])
+  }, [api.statusCounts, role, toast])
 
   // Open review + load audit log
   const openReview = useCallback(async (ag: Agreement) => {
@@ -70,7 +94,6 @@ export default function App() {
 
   // Open review by agreement ID (used from StorageTab)
   const openReviewById = useCallback(async (agreementId: string) => {
-    // Try from current list first, otherwise fetch directly
     let ag = api.agreements.find(a => a.id === agreementId)
     if (!ag) {
       try {
@@ -89,7 +112,8 @@ export default function App() {
     try {
       await api.upload(file, role.toLowerCase())
       toast(`Đã upload "${file.name}" — đang xử lý OCR…`, 'success')
-      await api.fetch(1)
+      await api.fetch(1, 10, statusFilter ?? undefined)
+      api.fetchStatusCounts()
     } catch (e) {
       toast(`Upload thất bại: ${e}`, 'error')
     } finally {
@@ -102,7 +126,8 @@ export default function App() {
     try {
       await api.approve(selected.id, role)
       toast('Đã phê duyệt hồ sơ', 'success')
-      await api.fetch(api.currentPage)
+      await api.fetch(api.currentPage, 10, statusFilter ?? undefined)
+      api.fetchStatusCounts()
       const fresh = api.agreements.find(a => a.id === selected.id)
       if (fresh) setSelected(fresh)
     } catch (e) {
@@ -115,7 +140,8 @@ export default function App() {
     try {
       await api.reject(selected.id, note, role)
       toast('Đã từ chối hồ sơ', 'info')
-      await api.fetch(api.currentPage)
+      await api.fetch(api.currentPage, 10, statusFilter ?? undefined)
+      api.fetchStatusCounts()
       const fresh = api.agreements.find(a => a.id === selected.id)
       if (fresh) setSelected(fresh)
     } catch (e) {
@@ -128,7 +154,8 @@ export default function App() {
     try {
       await api.activate(selected.id, role)
       toast('Hồ sơ đã kích hoạt và push sang hệ thống chính thức!', 'success')
-      await api.fetch(api.currentPage)
+      await api.fetch(api.currentPage, 10, statusFilter ?? undefined)
+      api.fetchStatusCounts()
       const fresh = api.agreements.find(a => a.id === selected.id)
       if (fresh) setSelected(fresh)
     } catch (e) {
@@ -141,7 +168,7 @@ export default function App() {
     try {
       await api.updateData(selected.id, data, role)
       toast('Đã lưu nháp', 'success')
-      await api.fetch(api.currentPage)
+      await api.fetch(api.currentPage, 10, statusFilter ?? undefined)
     } catch (e) {
       toast(`Lưu thất bại: ${e}`, 'error')
     }
@@ -149,12 +176,12 @@ export default function App() {
 
   const TABS = [
     { key: 'agreements' as Tab, label: 'Danh sách hồ sơ', icon: List },
-    { key: 'storage' as Tab, label: 'Kho lưu trữ', icon: HardDrive },
+    { key: 'storage'    as Tab, label: 'Kho lưu trữ',     icon: HardDrive },
   ]
 
   return (
     <div className="min-h-screen bg-[#F7F9FC]">
-      <Header role={role} onRoleChange={setRole} />
+      <Header role={role} onRoleChange={handleRoleChange} />
       <Stepper active={activeStep(api.agreements)} />
 
       <main className="max-w-7xl mx-auto px-6 py-6 space-y-5">
@@ -188,8 +215,12 @@ export default function App() {
               total={api.total}
               page={api.currentPage}
               pages={api.pages}
-              onRefresh={() => api.fetch(api.currentPage)}
-              onPageChange={(p) => api.fetch(p)}
+              role={role}
+              statusFilter={statusFilter}
+              statusCounts={api.statusCounts}
+              onFilterChange={handleFilterChange}
+              onRefresh={() => api.fetch(api.currentPage, 10, statusFilter ?? undefined)}
+              onPageChange={(p) => api.fetch(p, 10, statusFilter ?? undefined)}
               onReview={openReview}
             />
           </>
@@ -204,7 +235,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Review modal */}
       {selected && (
         <ReviewModal
           agreement={selected}

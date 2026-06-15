@@ -44,9 +44,9 @@ class Agreement(Base):
     rejection_note = Column(Text, nullable=True)
     source_file_name = Column(String, nullable=True)
     source_drive_file_id = Column(String, nullable=True, index=True)
+    drive_web_link = Column(String, nullable=True)
     created_at = Column(TZDateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(TZDateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    s3_key = Column(String, nullable=True, index=True)
     approved_by = Column(String, nullable=True)
     approved_at = Column(TZDateTime, nullable=True)
 

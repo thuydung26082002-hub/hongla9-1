@@ -24,7 +24,13 @@ interface TuKhoaExcel {
 interface ReconcileResult {
   error?: string
   merchant?: { ma_agreement: string; ten_merchant: string; ma_so_thue: string; trang_thai: string }
-  vat?: { hop_dong_bao_gom_vat: boolean | null; excel_co_so_vat: string; da_chuan_hoa: boolean }
+  vat?: {
+    hop_dong_bao_gom_vat: boolean | null
+    excel_co_j: string
+    excel_co_so_vat: string
+    da_chuan_hoa_hop_dong: boolean
+    da_chuan_hoa_excel: boolean | null
+  }
   tu_khoa_excel?: TuKhoaExcel[]
   so_sanh?: { tong_field_so_sanh: number; so_field_khop: number; ty_le_khop_phan_tram: number }
   field_lech?: FieldLech[]
@@ -153,9 +159,15 @@ export default function ReconcileTab({ agreementId }: Props) {
                 HĐ: {result.vat?.hop_dong_bao_gom_vat === true ? '✓ Đã gồm VAT' :
                        result.vat?.hop_dong_bao_gom_vat === false ? '✗ Chưa gồm VAT' : 'Không rõ'}
               </p>
-              <p className="text-gray-600">Excel: {result.vat?.excel_co_so_vat}</p>
-              {result.vat?.da_chuan_hoa && (
-                <p className="text-blue-600 font-medium">✓ Đã chuẩn hóa VAT trước khi so sánh</p>
+              <p className="text-gray-600">
+                Excel cột J: <span className="font-mono font-bold">{result.vat?.excel_co_j}</span>
+                {' '}— {result.vat?.excel_co_so_vat}
+              </p>
+              {result.vat?.da_chuan_hoa_hop_dong && (
+                <p className="text-blue-600 font-medium">✓ Đã chuẩn hóa VAT phía HĐ</p>
+              )}
+              {result.vat?.da_chuan_hoa_excel && (
+                <p className="text-blue-600 font-medium">✓ Đã chuẩn hóa VAT phía Excel (÷1.1)</p>
               )}
             </div>
           </div>

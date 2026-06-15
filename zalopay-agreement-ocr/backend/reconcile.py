@@ -51,6 +51,7 @@ COL_MA_AGREE     = 1   # B
 COL_TEN_AGREE    = 2   # C
 COL_TRANG_THAI   = 3   # D
 COL_TEN_MERCHANT = 4   # E
+COL_THUE_VAT     = 9   # J — YES = chưa gồm VAT, NO = đã gồm VAT
 
 # ── Internal channel → fee basket ────────────────────────────────────────────
 # Quy tắc đặc biệt: Cổng/TKTS, Cổng/Số dư SL → rổ Kênh Zalopay App
@@ -86,7 +87,6 @@ ROW_PHI_GD   = "Phí dịch vụ"
 ROW_PHI_HOAN = "Phí xử lý hoàn trả"
 
 VAT_RATE      = 0.10
-EXCEL_VAT_BASIS = "chưa gồm VAT"
 SAI_SO        = 0.01   # điểm phần trăm được phép chênh
 NGUONG_DUYET  = 90
 NGUONG_REVIEW = 70
@@ -275,6 +275,22 @@ def reconcile(excel_bytes: bytes, agreement_data: dict) -> dict:
             "error": canh_bao[0] if canh_bao else "Không tìm thấy merchant.",
         }
 
+    # ── Read VAT basis from column J ─────────────────────────────────────────
+    vat_j_raw = str(row[COL_THUE_VAT] or "").strip().upper()
+    if vat_j_raw == "YES":
+        excel_vat_included = False   # J=YES → phí Excel chưa gồm VAT
+        excel_co_so_vat = "chưa gồm VAT (J=YES)"
+    elif vat_j_raw == "NO":
+        excel_vat_included = True    # J=NO  → phí Excel đã gồm VAT
+        excel_co_so_vat = "đã gồm VAT (J=NO)"
+    else:
+        excel_vat_included = False   # mặc định: chưa gồm VAT
+        excel_co_so_vat = "VAT chưa rõ (mặc định: chưa gồm)"
+        canh_bao.append(
+            f"Cột J (Thuế VAT) {'trống' if not vat_j_raw else f'giá trị lạ: {vat_j_raw!r}'}. "
+            "Mặc định: chưa gồm VAT."
+        )
+
     # ── Check assignments exist ──────────────────────────────────────────────
     assignments = (fee_data or {}).get("assignments") or {}
     if not assignments:
@@ -284,13 +300,13 @@ def reconcile(excel_bytes: bytes, agreement_data: dict) -> dict:
     baskets = _extract_contract_baskets(fee_data)
     bao_gom_vat: bool | None = fee_data.get("vat_included")
 
-    # ── VAT normalization ────────────────────────────────────────────────────
-    da_chuan_hoa = False
+    # ── VAT normalization: đưa cả 2 phía về pre-VAT trước khi so ────────────
+    da_chuan_hoa_hd = False
     if bao_gom_vat is True:
         for ro in baskets.values():
             if ro["phi_gd"] is not None:
                 ro["phi_gd"] = round(ro["phi_gd"] / (1 + VAT_RATE), 6)
-        da_chuan_hoa = True
+        da_chuan_hoa_hd = True
 
     # ── Per-channel comparison ───────────────────────────────────────────────
     tu_khoa_excel: list[dict] = []
@@ -298,9 +314,14 @@ def reconcile(excel_bytes: bytes, agreement_data: dict) -> dict:
     so_khop = 0
 
     for kenh in FEE_PCT_COL:
-        excel_pct  = _excel_pct(row[FEE_PCT_COL[kenh]])
-        excel_hoan = _excel_vnd(row[REFUND_FEE_COL[kenh]]) if excel_pct is not None else None
-        kenh_mo    = excel_pct is not None
+        excel_pct_raw = _excel_pct(row[FEE_PCT_COL[kenh]])
+        # Normalize Excel phí GD to pre-VAT if J=NO (đã gồm VAT)
+        if excel_vat_included and excel_pct_raw is not None:
+            excel_pct = round(excel_pct_raw / (1 + VAT_RATE), 6)
+        else:
+            excel_pct = excel_pct_raw
+        excel_hoan = _excel_vnd(row[REFUND_FEE_COL[kenh]]) if excel_pct_raw is not None else None
+        kenh_mo    = excel_pct_raw is not None
         ro_key     = KENH_TO_RO[kenh]
         basket     = baskets.get(ro_key, {})
         ky_vong_pct  = basket.get("phi_gd")
@@ -394,8 +415,10 @@ def reconcile(excel_bytes: bytes, agreement_data: dict) -> dict:
         },
         "vat": {
             "hop_dong_bao_gom_vat": bao_gom_vat,
-            "excel_co_so_vat": EXCEL_VAT_BASIS,
-            "da_chuan_hoa": da_chuan_hoa,
+            "excel_co_j": vat_j_raw or "(trống)",
+            "excel_co_so_vat": excel_co_so_vat,
+            "da_chuan_hoa_hop_dong": da_chuan_hoa_hd,
+            "da_chuan_hoa_excel": excel_vat_included,
         },
         "tu_khoa_excel": tu_khoa_excel,
         "so_sanh": {

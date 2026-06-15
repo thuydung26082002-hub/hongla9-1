@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import type { Agreement, AuditLog, ExtractedData, StorageFile } from '../types/agreement'
 
-const BASE = '/api/agreements'
+const BASE    = '/api/agreements'
 const STORAGE = '/api/storage'
 
 export function useAgreements() {
@@ -10,11 +10,14 @@ export function useAgreements() {
   const [pages, setPages] = useState(1)
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({})
 
-  const fetch = useCallback(async (page = 1, size = 10) => {
+  const fetch = useCallback(async (page = 1, size = 10, status?: string) => {
     setLoading(true)
     try {
-      const r = await window.fetch(`${BASE}?page=${page}&size=${size}`)
+      const params = new URLSearchParams({ page: String(page), size: String(size) })
+      if (status) params.set('status', status)
+      const r = await window.fetch(`${BASE}?${params}`)
       const data = await r.json()
       setAgreements(data.items ?? [])
       setTotal(data.total ?? 0)
@@ -23,6 +26,13 @@ export function useAgreements() {
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  const fetchStatusCounts = useCallback(async () => {
+    try {
+      const r = await window.fetch(`${BASE}/status-counts`)
+      if (r.ok) setStatusCounts(await r.json())
+    } catch { /* ignore */ }
   }, [])
 
   const upload = useCallback(async (file: File, actor = 'sales') => {
@@ -76,8 +86,8 @@ export function useAgreements() {
   }, [])
 
   return {
-    agreements, total, pages, currentPage, loading,
-    fetch, upload, approve, reject, activate, updateData, getAuditLog,
+    agreements, total, pages, currentPage, loading, statusCounts,
+    fetch, fetchStatusCounts, upload, approve, reject, activate, updateData, getAuditLog,
   }
 }
 
@@ -114,20 +124,8 @@ export function useStorage() {
     fd.append('actor', actor)
     const r = await window.fetch(`${STORAGE}/upload`, { method: 'POST', body: fd })
     if (!r.ok) throw new Error(await r.text())
-    return r.json() as Promise<{ agreement_id: string; s3_key: string; name: string }>
+    return r.json() as Promise<{ agreement_id: string; drive_file_id: string; name: string; web_link: string }>
   }, [])
 
-  const getDownloadUrl = useCallback(async (key: string): Promise<string> => {
-    const r = await window.fetch(`${STORAGE}/download?key=${encodeURIComponent(key)}`)
-    if (!r.ok) throw new Error('Không lấy được link download')
-    const d = await r.json()
-    return d.url
-  }, [])
-
-  const deleteFile = useCallback(async (key: string) => {
-    const r = await window.fetch(`${STORAGE}/files?key=${encodeURIComponent(key)}`, { method: 'DELETE' })
-    if (!r.ok) throw new Error(await r.text())
-  }, [])
-
-  return { files, loading, configured, checkStatus, fetchFiles, upload, getDownloadUrl, deleteFile }
+  return { files, loading, configured, checkStatus, fetchFiles, upload }
 }

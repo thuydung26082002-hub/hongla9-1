@@ -16,7 +16,8 @@ class AgreementOut(BaseModel):
     needs_review: int
     rejection_note: Optional[str]
     source_file_name: Optional[str]
-    s3_key: Optional[str]
+    source_drive_file_id: Optional[str]
+    drive_web_link: Optional[str]
     created_at: datetime
     updated_at: datetime
     approved_by: Optional[str]
@@ -35,10 +36,11 @@ class PaginatedAgreements(BaseModel):
 
 
 class StorageFileOut(BaseModel):
-    key: str
+    key: str          # Drive file ID
     name: str
     size: int
     last_modified: str
+    web_link: Optional[str] = None
     has_agreement: bool
     agreement_id: Optional[str] = None
     agreement_status: Optional[str] = None

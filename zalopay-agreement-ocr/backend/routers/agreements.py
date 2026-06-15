@@ -43,6 +43,16 @@ async def list_agreements(
     return PaginatedAgreements(items=list(items), total=total, page=page, size=size, pages=pages)
 
 
+# ── Status counts ─────────────────────────────────────────────────────────────
+@router.get("/status-counts")
+async def status_counts(db: AsyncSession = Depends(get_db)):
+    """Returns total count per status. Used for filter badge numbers."""
+    rows = (await db.execute(
+        select(Agreement.status, func.count(Agreement.id)).group_by(Agreement.status)
+    )).all()
+    return {str(row[0].value): row[1] for row in rows}
+
+
 # ── Get detail ────────────────────────────────────────────────────────────────
 @router.get("/{agreement_id}", response_model=AgreementOut)
 async def get_agreement(agreement_id: str, db: AsyncSession = Depends(get_db)):
